@@ -1,8 +1,9 @@
-# Pong Hand Tracking (Tugas PCD)
+# Hand Pong (Tugas PCD)
 
-Game Pong yang paddle-nya digerakkan oleh deteksi tangan dari webcam.
-Deteksi memakai pengolahan citra klasik (tanpa machine learning): segmentasi
-warna kulit → morfologi → kontur terbesar → pusat kontur.
+Game Pong yang paddle-nya digerakkan oleh tangan di depan webcam. Pendekatan
+**hybrid**: MediaPipe Hands dipakai hanya untuk mendapatkan landmark dan label
+tangan (Left/Right), sedangkan tahap pengolahan citra digital dikerjakan sendiri
+(pra-pemrosesan CLAHE, pemilihan anchor, pemetaan, dan smoothing).
 
 ## Struktur file
 
@@ -10,12 +11,12 @@ warna kulit → morfologi → kontur terbesar → pusat kontur.
 |---|---|
 | `menu.py` | **Titik masuk aplikasi**: menu utama (tombol Single Player / 2 Player), pemilik kamera, loop menu → game → menu |
 | `ui.py` | Kelas `Button` (rect, label, `draw`, `is_clicked`) — tanpa logika game |
-| `hand_tracker.py` | Tahap PCD: blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah, kontur, pusat tangan (1 atau 2 tangan) |
-| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + `run_game(screen, clock, tracker)` (satu pemain) |
-| `pong_2p.py` | Versi dua pemain: dua paddle vertikal, dua tangan, skor sampai 7 |
-| `calibrate.py` | Kalibrasi rentang warna kulit dengan trackbar |
+| `hand_tracker.py` | Tahap PCD: resize 320×240 → cermin → CLAHE pada LAB → blur → MediaPipe Hands → anchor pusat telapak. `read()` mengembalikan `(frame, debug, hands)` dengan `hands = {"Left": (x, y), "Right": (x, y)}` |
+| `pong.py` | Game satu pemain: `Ball`, `Paddle`, `Game`, `run_game(screen, clock, tracker)` |
+| `pong_2p.py` | Game dua pemain: dua paddle vertikal, label Left/Right, skor sampai 7 |
+| `calibrate.py` | Opsional/legacy: eksplorasi rentang warna kulit dengan trackbar. Tidak dipakai game |
 | `config.py` | Semua konstanta game dan parameter PCD |
-| `requirements.txt` | `opencv-python<5`, `numpy`, `pygame` |
+| `requirements.txt` | `opencv-python<5`, `numpy`, `pygame`, `mediapipe==0.10.14` |
 
 ## Instalasi
 
@@ -26,9 +27,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> `opencv-python` **harus versi < 5**. Mulai OpenCV 5 file cascade Haar
-> (`haarcascade_frontalface_default.xml`) tidak ikut terpasang lagi, sehingga
-> deteksi wajah untuk membuang area wajah gagal.
+> `mediapipe` dipin ke **0.10.14** dan dipakai lewat API `mp.solutions.hands`
+> (bukan Tasks API). Versi lain punya nama API yang berbeda.
 
 ## Menjalankan
 
@@ -40,15 +40,14 @@ python menu.py
 Menu utama menampilkan judul dan dua tombol berukuran sama: **Single Player**
 dan **2 Player**.
 
-- Pilih dengan panah atas/bawah atau arahkan mouse; sorotan ditandai warna
-  berbeda + border lebih tebal.
+- Pilih dengan panah atas/bawah (memutar) atau gerakkan mouse ke tombol;
+  sorotan ditandai warna lebih terang + border hijau lebih tebal.
 - `Enter` atau klik kiri untuk masuk ke game.
 - `Esc` di menu untuk keluar aplikasi.
 - `Esc` di dalam game untuk kembali ke menu (bukan keluar aplikasi). Skor, bola,
   dan nyawa direset, jadi game berikutnya mulai dari awal.
 - Kamera dibuka sekali saat game pertama dimulai dan dipakai ulang, sehingga
-  tidak ada dua kamera aktif saat berpindah menu → game → menu. Kalau kamera
-  gagal dibuka, pesannya tampil di menu dan aplikasi tidak crash.
+  tidak ada dua kamera aktif saat berpindah menu → game → menu.
 
 Game juga bisa dijalankan langsung tanpa menu (untuk pengujian):
 `python pong.py` atau `python pong_2p.py`.
@@ -56,9 +55,9 @@ Game juga bisa dijalankan langsung tanpa menu (untuk pengujian):
 Jendela yang muncul saat bermain:
 
 - **Pong Hand Tracking** — game (640×480)
-- **Debug - Kamera** — feed kamera 320×240 + kotak kandidat tangan (biru),
-  kotak wajah yang diabaikan (kuning), titik pusat (hijau)
-- **Debug - Mask kulit** — hasil segmentasi 320×240
+- **Debug - Kamera** — 320×240, hasil pra-pemrosesan (CLAHE + blur) dengan
+  skeleton landmark, label `Left`/`Right`, titik hijau di pusat telapak, dan
+  teks jumlah tangan yang terdeteksi
 
 Kontrol di game satu pemain: gerakkan tangan (posisi X → paddle), panah
 kiri/kanan sebagai cadangan keyboard, `R` untuk main lagi, `Esc` ke menu.
@@ -67,50 +66,65 @@ kiri/kanan sebagai cadangan keyboard, `R` untuk main lagi, `Esc` ke menu.
 
 Pilih tombol **2 Player** di menu, atau jalankan langsung `python pong_2p.py`.
 
-- Paddle **kiri** dikontrol tangan di separuh kiri frame, paddle **kanan** di
-  separuh kanan. Paddle bergerak vertikal: posisi Y tangan (20%..80% tinggi
-  frame) dipetakan ke tinggi layar.
-- Tangan yang menyilang garis tengah tidak langsung berpindah pemain: ada pita
-  mati `ZONE_HYSTERESIS` (5% lebar frame). Kalau sebuah zona tidak punya tangan,
-  paddle di zona itu diam di posisi terakhir.
+- Label **Left** menggerakkan paddle kiri, label **Right** menggerakkan paddle
+  kanan. Tidak ada pembagian zona berdasarkan posisi x, jadi tangan yang
+  menyilang ke sisi lain layar tetap menggerakkan paddle pemiliknya.
+- Paddle bergerak vertikal: posisi Y tangan pada 20%..80% tinggi frame
+  dipetakan ke seluruh tinggi layar. Di luar rentang itu paddle menempel tepi.
 - Skor: bola lolos di kiri → pemain kanan dapat poin, dan sebaliknya. Pemain
   pertama yang mencapai 7 poin menang; tekan `R` untuk main lagi.
 - Cadangan keyboard: `W`/`S` untuk paddle kiri, panah atas/bawah untuk paddle
   kanan, `Esc` kembali ke menu.
-- Jendela debug sama seperti mode satu pemain, dengan garis tengah pemisah zona
-  dan titik centroid berwarna berbeda untuk tiap pemain (hijau = kiri,
-  oranye = kanan).
+- Jendela debug sama seperti mode satu pemain, dengan titik anchor berwarna
+  berbeda untuk tiap pemain (hijau = kiri, oranye = kanan).
 
-## Kalibrasi warna kulit
+## Tangan hilang dan kontrol keyboard
+
+Paddle tidak pernah melompat ke keyboard. Aturannya sama di kedua mode:
+
+1. Selama tangan terlihat, paddle hanya mengikuti tangan.
+2. Tangan hilang → paddle diam di posisi terakhir.
+3. Tangan hilang lebih dari `HAND_LOST_DELAY` (1 detik) → keyboard aktif dan
+   bisa menggeser paddle. Begitu tangan terlihat lagi, keyboard langsung
+   diabaikan dan paddle kembali mengikuti tangan.
+
+## Kalibrasi warna kulit (opsional)
 
 ```bash
 python calibrate.py
 ```
 
-Geser trackbar sampai tangan putih penuh dan latar hitam, lalu tekan `s`
-untuk mencetak nilai `HSV_LOWER` / `HSV_UPPER` yang bisa ditempel ke `config.py`.
-Kalau HSV sulit stabil terhadap pencahayaan, ganti `COLOR_SPACE = "ycrcb"`
-di `config.py` (YCrCb lebih tahan terhadap perubahan terang, tapi rentangnya
-lebih sempit dan perlu kalibrasi ulang).
+Game tidak lagi memakai segmentasi warna kulit (deteksi tangan memakai
+MediaPipe), jadi langkah ini **tidak diperlukan** untuk bermain. Skrip ini
+tetap disimpan untuk eksplorasi/laporan: geser trackbar sampai mask putih
+mengikuti tangan, tekan `s` untuk mencetak `HSV_LOWER` / `HSV_UPPER`, `q` untuk
+keluar. Nilai yang dicetak tidak memengaruhi jalannya game.
 
 ## Troubleshooting
 
-**Jendela pygame tidak kelihatan** — biasanya tertutup dua jendela debug OpenCV.
-Jendela debug sekarang dibuat 320×240 di pojok kiri atas lewat
-`cv2.namedWindow` + `resizeWindow` + `moveWindow`, jadi tidak menutupi game.
-Kalau masih ketutupan, geser jendela debug atau nonaktifkan sementara dua
-baris `cv2.imshow` di `pong.py`.
+**Kamera IR terpakai / frame hitam** — `CAM_INDEX = 1` adalah default dan
+**index 0 tidak pernah dibuka** karena di mesin ini index 0 adalah kamera IR.
+Kalau kamera RGB ada di index lain, ubah `CAM_INDEX` di `config.py`. Terminal
+mencetak `Kamera dibuka: index N (dipilih manual)` saat berhasil.
 
-**Mask kulit hitam** — cek output terminal. `HandTracker` sekarang membuka
-kamera RGB langsung di `CAM_INDEX = 1`; **index 0 tidak pernah dipakai** karena
-di mesin ini index 0 adalah kamera IR (Windows Hello) yang frame-nya
-hitam/abu-abu. Kalau pesan `[PERINGATAN] ... tanpa warna` muncul, ganti
-`CAM_INDEX` di `config.py` ke index kamera RGB lain (misalnya `2`).
+**Kamera gagal dibuka** — menu menampilkan pesan penyebab (izin macOS, kamera
+dipakai aplikasi lain, atau index salah) dan aplikasi tetap berjalan. Kalau
+kamera terputus saat bermain, game kembali ke menu dengan pesan; sambungkan
+kamera lalu pilih mode lagi.
 
-**Tangan tidak terdeteksi** — lihat jendela *Mask kulit*: area tangan harus
-putih. Kalau tidak, jalankan `calibrate.py`. Turunkan juga `MIN_AREA_RATIO`
-kalau tangan jauh dari kamera.
+**Tangan tidak terdeteksi** — lihat jendela *Debug - Kamera*: skeleton harus
+muncul mengikuti tangan. Bila tidak: pastikan tangan masuk frame (bukan hanya
+ujung jari), cahaya cukup, dan tangan tidak terlalu dekat lensa. `CLAHE_CLIP`
+dan `MP_DETECTION_CONF` di `config.py` bisa disesuaikan. MediaPipe juga
+mencetak log `INFO`/`WARNING` sendiri di terminal — itu normal.
 
-**Paddle tidak bergerak walau tangan terlihat** — pastikan teks di jendela
-kamera menunjukkan `TANGAN: TERDETEKSI` (mode satu pemain) atau `TANGAN: 1/2`
-/ `TANGAN: 2/2` (mode dua pemain).
+**Paddle bergerak di sisi yang salah pada mode dua pemain** — label Left/Right
+dari MediaPipe mengikuti gambar yang sudah dicerminkan. Bila hasilnya terbalik
+di perangkat Anda, tukar pemetaan di `label_ke_sisi()` (`pong_2p.py`).
+
+**Jendela pygame tidak kelihatan** — jendela debug OpenCV dibuat 320×240 di
+pojok kiri atas lewat `cv2.namedWindow` + `resizeWindow` + `moveWindow`, jadi
+tidak menutupi game. Kalau masih ketutupan, geser jendela debug.
+
+**Paddle tidak bergerak walau tangan terlihat** — cek teks `TANGAN: n` di
+jendela *Debug - Kamera*. Bila `0`, deteksi gagal (lihat poin di atas).
