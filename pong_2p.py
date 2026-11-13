@@ -202,6 +202,8 @@ class Game:
         # Zona mana yang frame lalu punya tangan (untuk histeresis garis tengah).
         self.zona_aktif = {"kiri": False, "kanan": False}
         self.zona = {"kiri": None, "kanan": None}
+        # Lama tangan tidak terlihat per sisi; keyboard aktif setelah HAND_LOST_DELAY.
+        self.hilang_dt = {"kiri": 0.0, "kanan": 0.0}
         self.ball = Ball()
         self.score = {"kiri": 0, "kanan": 0}
         self.winner = None
@@ -240,22 +242,34 @@ class Game:
         self.ball.reset()
 
     def update_targets(self, dt, zona, frame_h):
-        """Target paddle: keyboard dulu, lalu tangan menimpa bila terdeteksi."""
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            self.target["kiri"] -= config.KEY_SPEED * dt
-        if keys[pygame.K_s]:
-            self.target["kiri"] += config.KEY_SPEED * dt
-        if keys[pygame.K_UP]:
-            self.target["kanan"] -= config.KEY_SPEED * dt
-        if keys[pygame.K_DOWN]:
-            self.target["kanan"] += config.KEY_SPEED * dt
-        for sisi in ("kiri", "kanan"):
-            self.target[sisi] = min(max(self.target[sisi], 0), config.HEIGHT)
+        """Target paddle: tangan dulu; keyboard hanya setelah tangan hilang lama.
 
-        for sisi, h in zona.items():
+        Item 2: tiap sisi punya timer sendiri. Selama tangan masih terlihat
+        (atau baru hilang < HAND_LOST_DELAY), keyboard diabaikan dan paddle
+        tetap di posisi terakhir.
+        """
+        keys = pygame.key.get_pressed()
+        for sisi in ("kiri", "kanan"):
+            h = zona[sisi]
             if h is not None:
                 self.target[sisi] = hand_to_paddle(h[1], frame_h)
+                self.hilang_dt[sisi] = 0.0
+                continue
+
+            self.hilang_dt[sisi] += dt
+            if self.hilang_dt[sisi] < config.HAND_LOST_DELAY:
+                continue  # paddle diam di posisi terakhir
+            if sisi == "kiri":
+                if keys[pygame.K_w]:
+                    self.target[sisi] -= config.KEY_SPEED * dt
+                if keys[pygame.K_s]:
+                    self.target[sisi] += config.KEY_SPEED * dt
+            else:
+                if keys[pygame.K_UP]:
+                    self.target[sisi] -= config.KEY_SPEED * dt
+                if keys[pygame.K_DOWN]:
+                    self.target[sisi] += config.KEY_SPEED * dt
+            self.target[sisi] = min(max(self.target[sisi], 0), config.HEIGHT)
 
         for sisi, paddle in self.paddles.items():
             paddle.update(dt, self.target[sisi])

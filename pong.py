@@ -108,6 +108,8 @@ class Game:
         # Target paddle disimpan, jadi saat tangan hilang paddle diam
         # di posisi terakhir (bukan melompat ke tengah / ke keyboard).
         self.target = config.WIDTH / 2
+        # Lama tangan tidak terlihat; keyboard baru aktif setelah HAND_LOST_DELAY.
+        self.hilang_dt = 0.0
 
     # ------------------------------------------------------- jendela debug PCD
     def _buka_debug(self):
@@ -156,19 +158,23 @@ class Game:
             self.running = False
             return None, None, {}
 
-        # Item 1: posisi diambil dari label tangan; kiri diutamakan.
+        # Posisi diambil dari label tangan; kiri diutamakan.
         anchor = hands.get("Left") or hands.get("Right")
         if anchor is not None:
             self.target = self.hand_to_paddle(anchor[0], frame.shape[1])
+            self.hilang_dt = 0.0
         else:
-            # Tangan hilang: target tetap di posisi terakhir, keyboard hanya
-            # menggeser target bila tombol panah ditekan.
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_LEFT]:
-                self.target -= config.KEY_SPEED * dt
-            if keys[pygame.K_RIGHT]:
-                self.target += config.KEY_SPEED * dt
-            self.target = min(max(self.target, 0), config.WIDTH)
+            # Item 2: tangan hilang -> paddle tetap di posisi terakhir. Keyboard
+            # baru mengambil alih setelah HAND_LOST_DELAY, jadi tangan yang
+            # sebentar keluar dari frame tidak langsung "loncat" ke keyboard.
+            self.hilang_dt += dt
+            if self.hilang_dt >= config.HAND_LOST_DELAY:
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_LEFT]:
+                    self.target -= config.KEY_SPEED * dt
+                if keys[pygame.K_RIGHT]:
+                    self.target += config.KEY_SPEED * dt
+                self.target = min(max(self.target, 0), config.WIDTH)
 
         self.paddle.update(dt, self.target)
 

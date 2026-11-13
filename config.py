@@ -14,13 +14,14 @@ BALL_SPEED_X = 180
 BALL_SPEED_Y = 240
 BALL_SPEED_MAX = 540
 BALL_ACCEL = 1.03
-MIN_VX = 90          # item 9: |vx| minimal (~1.5 px/frame @60fps)
+MIN_VX = 90          # |vx| minimal (~1.5 px/frame @60fps)
 
 KEY_SPEED = 320      # piksel/detik untuk kontrol keyboard
-SMOOTH_TAU = 0.08    # item 7: konstanta waktu smoothing paddle (detik)
+SMOOTH_TAU = 0.08    # konstanta waktu smoothing paddle (detik)
+HAND_LOST_DELAY = 1.0  # detik tanpa tangan sebelum keyboard mengambil alih
 
 # ------------------------------------------------------------------- tahap PCD
-PROC_W, PROC_H = 320, 240     # item 8: deteksi diproses di resolusi kecil
+PROC_W, PROC_H = 320, 240     # deteksi diproses di resolusi kecil
 DEBUG_SIZE = (320, 240)       # ukuran jendela debug OpenCV
 DEBUG_WINDOW = "Debug - Kamera"   # menampilkan pra-pemrosesan + landmark + anchor
 
@@ -43,7 +44,7 @@ MP_TRACKING_CONF = 0.5
 # tahap 4: anchor = pusat telapak (9 = middle finger MCP, 8 = ujung telunjuk)
 ANCHOR_LANDMARK = 9
 
-# item 6: 20%..80% lebar frame dipetakan ke 0..WIDTH
+# 20%..80% lebar frame dipetakan ke 0..WIDTH
 HAND_X_MIN, HAND_X_MAX = 0.2, 0.8
 
 # ------------------------------------------------- mode dua pemain (pong_2p.py)
@@ -86,7 +87,7 @@ WARNA_BORDER_RGB = (110, 110, 120)
 WARNA_BORDER_AKTIF_RGB = (90, 255, 140)
 WARNA_PESAN_RGB = (255, 120, 120)
 
-# item 5: index kamera. Index 0 di mesin ini adalah kamera IR dan TIDAK PERNAH
+# index kamera. Index 0 di mesin ini adalah kamera IR dan TIDAK PERNAH
 # dipakai. Default 1 = kamera RGB. None = cari otomatis mulai dari index 1.
 CAM_INDEX = 1
 CAM_INDEX_CANDIDATES = (1, 2, 3)   # index yang dicoba saat CAM_INDEX = None
