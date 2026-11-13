@@ -40,5 +40,27 @@ ROI_TOP = 0.0                 # item 2 (alternatif): 0 = nonaktif, 0.35 = buang 
 # item 6: 20%..80% lebar frame dipetakan ke 0..WIDTH
 HAND_X_MIN, HAND_X_MAX = 0.2, 0.8
 
+# ------------------------------------------------- mode dua pemain (pong_2p.py)
+PADDLE_THICK = 16             # tebal paddle vertikal (sumbu x)
+PADDLE_LEN = 120              # panjang paddle vertikal (sumbu y)
+PADDLE_MARGIN = 28            # jarak paddle dari dinding kiri/kanan
+WIN_SCORE = 7                 # poin untuk menang
+
+BALL_SPEED_X_2P = 260         # kecepatan awal horizontal (piksel/detik)
+BALL_SPEED_Y_2P = 140         # kecepatan awal vertikal (piksel/detik)
+BALL_ACCEL_2P = 1.05          # kecepatan naik sedikit tiap pantulan paddle
+BALL_SPEED_MAX_2P = 620       # batas kecepatan setelah percepatan
+MIN_VX_2P = 180               # |vx| >= 3 piksel/frame @60fps (sumbu utama)
+MAX_BOUNCE_ANGLE = 60         # derajat, sudut pantul maksimum dari offset paddle
+
+# 20%..80% tinggi frame dipetakan ke 0..HEIGHT (paddle bergerak di sumbu y)
+HAND_Y_MIN, HAND_Y_MAX = 0.2, 0.8
+ZONE_HYSTERESIS = 0.05        # pita mati di garis tengah (5% lebar frame)
+MAX_HANDS = 2                 # jumlah tangan yang dilacak
+
+# Warna pemain (RGB untuk pygame; OpenCV memakai urutan terbalik)
+WARNA_KIRI_RGB = (90, 255, 140)
+WARNA_KANAN_RGB = (255, 170, 80)
+
 # item 5: index kamera. None = otomatis pilih kamera berwarna (kamera IR dilewati).
 CAM_INDEX = None

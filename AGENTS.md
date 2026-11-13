@@ -16,8 +16,9 @@ gerakan tangan lewat webcam. Tugas akhir mata kuliah Pengolahan Citra Digital.
 
 | File | Isi |
 |---|---|
-| `hand_tracker.py` | Tahap PCD: resize 320×240, blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah (Haar), kontur terbesar, pusat tangan |
-| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + loop utama pygame |
+| `hand_tracker.py` | Tahap PCD: resize 320×240, blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah (Haar), kontur, pusat tangan (`find_hand_center` satu tangan, `find_hand_centers` maks. 2 tangan) |
+| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + loop utama pygame (satu pemain) |
+| `pong_2p.py` | Versi dua pemain: dua paddle vertikal (kiri/kanan), zona tangan, fisika sweep, skor sampai `WIN_SCORE` |
 | `calibrate.py` | Kalibrasi rentang warna kulit dengan trackbar |
 | `config.py` | Semua konstanta game dan parameter PCD |
 | `requirements.txt` | `opencv-python<5`, `numpy`, `pygame` |
@@ -49,8 +50,9 @@ gerakan tangan lewat webcam. Tugas akhir mata kuliah Pengolahan Citra Digital.
 
 ```bash
 source .venv/bin/activate
-python -m py_compile config.py hand_tracker.py pong.py calibrate.py
+python -m py_compile config.py hand_tracker.py pong.py pong_2p.py calibrate.py
 python pong.py            # jendela game + 2 jendela debug harus muncul
+python pong_2p.py         # dua paddle: kiri & kanan, skor sampai 7
 python calibrate.py       # trackbar; 's' cetak HSV_LOWER/HSV_UPPER, 'q' keluar
 ```
 
@@ -74,6 +76,8 @@ Bukti yang dipakai saat memeriksa perubahan (bukan sekadar "tidak error"):
 | `USE_FACE_HAAR`, `FACE_MARGIN` | Buang area wajah dari mask |
 | `ROI_TOP` | Alternatif: buang bagian atas frame (0 = nonaktif) |
 | `HAND_X_MIN`, `HAND_X_MAX` | Rentang lebar frame (0.2..0.8) yang dipetakan ke layar |
+| `HAND_Y_MIN`, `HAND_Y_MAX` | Rentang tinggi frame (0.2..0.8) yang dipetakan ke `0..HEIGHT` (mode dua pemain) |
+| `MAX_HANDS`, `ZONE_HYSTERESIS` | Jumlah tangan yang dilacak (2) dan pita mati di garis tengah (5% lebar frame) |
 | `PROC_W`, `PROC_H` | Resolusi pemrosesan (320×240) |
 
 ## Jebakan yang sudah ditemui

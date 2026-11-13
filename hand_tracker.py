@@ -35,6 +35,7 @@ class HandTracker:
         self.cap = self._open_camera(cam_index)
         self.history = []        # riwayat pusat tangan untuk perata-rataan
         self.last_rect = None    # bbox tangan terakhir (untuk gambar debug)
+        self.last_rects = []     # bbox semua tangan pada mode dua pemain
 
         self.face_cascade = None
         if config.USE_FACE_HAAR:
@@ -125,11 +126,14 @@ class HandTracker:
         self.cap.release()
 
     # ------------------------------------------------------------- pipeline PCD
-    def read(self):
-        """Kembalikan (frame, mask, center, faces); center None bila tak ada tangan."""
+    def _read_frame(self):
+        """Ambil frame, resize + cermin, lalu buang area wajah dari mask.
+
+        Kembalikan (frame, mask, faces); frame None bila kamera gagal.
+        """
         ok, frame = self.cap.read()
         if not ok:
-            return None, None, None, []
+            return None, None, None
 
         # Item 8: semua deteksi dikerjakan di 320x240 agar ringan.
         frame = cv2.resize(frame, (config.PROC_W, config.PROC_H),
@@ -138,8 +142,21 @@ class HandTracker:
 
         faces = self.detect_faces(frame)
         mask = self.segment(frame, faces)
-        center = self.find_hand_center(mask)
-        return frame, mask, center, faces
+        return frame, mask, faces
+
+    def read(self):
+        """Kembalikan (frame, mask, center, faces); center None bila tak ada tangan."""
+        frame, mask, faces = self._read_frame()
+        if frame is None:
+            return None, None, None, []
+        return frame, mask, self.find_hand_center(mask), faces
+
+    def read_hands(self):
+        """Varian dua pemain: (frame, mask, daftar pusat tangan, faces)."""
+        frame, mask, faces = self._read_frame()
+        if frame is None:
+            return None, None, [], []
+        return frame, mask, self.find_hand_centers(mask), faces
 
     def detect_faces(self, frame):
         """Item 2: kotak wajah (Haar) diperluas sedikit agar dagu/leher ikut terbuang."""
@@ -208,3 +225,33 @@ class HandTracker:
         return (int(sum(p[0] for p in self.history) / n),
                 int(sum(p[1] for p in self.history) / n))
 
+    def find_hand_centers(self, mask, max_hands=config.MAX_HANDS):
+        """Tahap 4-5 (dua pemain): centroid dari maksimal `max_hands` kontur terbesar.
+
+        Beda dengan find_hand_center: tiap tangan dianggap objek terpisah, jadi
+        tidak ada rata-rata N frame (smoothing-nya di paddle, pakai dt). Hasil
+        diurut area terbesar -> terkecil, supaya tangan utama (lebih dekat
+        kamera) dipakai lebih dulu saat dua tangan jatuh di zona yang sama.
+        """
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+        # Item 3: ambang area relatif terhadap luas frame.
+        min_area = config.MIN_AREA_RATIO * mask.shape[0] * mask.shape[1]
+        kandidat = [c for c in contours if cv2.contourArea(c) >= min_area]
+        kandidat.sort(key=cv2.contourArea, reverse=True)
+
+        pusat = []
+        self.last_rects = []
+        for c in kandidat[:max_hands]:
+            x, y, w, h = cv2.boundingRect(c)
+            # Item 4: pusat bounding box atau centroid momen, sama seperti mode satu pemain.
+            if config.CENTER_MODE == "moment":
+                m = cv2.moments(c)
+                if m["m00"] == 0:
+                    continue
+                cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
+            else:
+                cx, cy = x + w / 2, y + h / 2
+            pusat.append((int(cx), int(cy)))
+            self.last_rects.append((x, y, w, h))
+        return pusat

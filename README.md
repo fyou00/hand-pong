@@ -8,8 +8,9 @@ warna kulit → morfologi → kontur terbesar → pusat kontur.
 
 | File | Isi |
 |---|---|
-| `hand_tracker.py` | Tahap PCD: blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah, kontur, pusat tangan |
-| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + loop utama pygame |
+| `hand_tracker.py` | Tahap PCD: blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah, kontur, pusat tangan (1 atau 2 tangan) |
+| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + loop utama pygame (satu pemain) |
+| `pong_2p.py` | Versi dua pemain: dua paddle vertikal, dua tangan, skor sampai 7 |
 | `calibrate.py` | Kalibrasi rentang warna kulit dengan trackbar |
 | `config.py` | Semua konstanta game dan parameter PCD |
 | `requirements.txt` | `opencv-python<5`, `numpy`, `pygame` |
@@ -44,6 +45,26 @@ Jendela yang muncul:
 Kontrol: gerakkan tangan (posisi X → paddle), panah kiri/kanan sebagai
 cadangan keyboard, `R` untuk main lagi, `Esc` untuk keluar.
 
+## Mode dua pemain
+
+```bash
+python pong_2p.py
+```
+
+- Paddle **kiri** dikontrol tangan di separuh kiri frame, paddle **kanan** di
+  separuh kanan. Paddle bergerak vertikal: posisi Y tangan (20%..80% tinggi
+  frame) dipetakan ke tinggi layar.
+- Tangan yang menyilang garis tengah tidak langsung berpindah pemain: ada pita
+  mati `ZONE_HYSTERESIS` (5% lebar frame). Kalau sebuah zona tidak punya tangan,
+  paddle di zona itu diam di posisi terakhir.
+- Skor: bola lolos di kiri → pemain kanan dapat poin, dan sebaliknya. Pemain
+  pertama yang mencapai 7 poin menang; tekan `R` untuk main lagi.
+- Cadangan keyboard (bisa dipakai tanpa kamera): `W`/`S` untuk paddle kiri,
+  panah atas/bawah untuk paddle kanan, `Esc` keluar.
+- Jendela debug sama seperti mode satu pemain, dengan garis tengah pemisah zona
+  dan titik centroid berwarna berbeda untuk tiap pemain (hijau = kiri,
+  oranye = kanan).
+
 ## Kalibrasi warna kulit
 
 ```bash
@@ -75,4 +96,5 @@ putih. Kalau tidak, jalankan `calibrate.py`. Turunkan juga `MIN_AREA_RATIO`
 kalau tangan jauh dari kamera.
 
 **Paddle tidak bergerak walau tangan terlihat** — pastikan teks di jendela
-kamera menunjukkan `TANGAN: TERDETEKSI`.
+kamera menunjukkan `TANGAN: TERDETEKSI` (mode satu pemain) atau `TANGAN: 1/2`
+/ `TANGAN: 2/2` (mode dua pemain).
