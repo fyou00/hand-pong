@@ -1,8 +1,8 @@
 """Pong dua pemain: paddle kiri dan kanan digerakkan dua tangan dari webcam.
 
 Struktur: Ball (fisika + sweep), Paddle (vertikal + smoothing), Game (loop).
-Tahap PCD ada di hand_tracker.py: segmentasi kulit -> kontur terbesar ->
-centroid tiap tangan -> dipasangkan ke zona kiri/kanan frame.
+Tahap PCD ada di hand_tracker.py: pra-pemrosesan -> MediaPipe Hands ->
+anchor pusat telapak; tiap tangan dipasangkan ke zona kiri/kanan frame.
 
 Dipakai menu.py lewat run_game(screen, clock, tracker). Untuk pengujian tanpa
 menu, `python pong_2p.py` tetap bisa dijalankan sendiri.
@@ -22,7 +22,7 @@ def bgr(rgb):
     return (rgb[2], rgb[1], rgb[0])
 
 def hand_to_paddle(cy, frame_h):
-    """Item 6: rentang 20%..80% tinggi frame dipetakan ke 0..HEIGHT."""
+    """Rentang 20%..80% tinggi frame dipetakan ke 0..HEIGHT."""
     norm = (cy / frame_h - config.HAND_Y_MIN) / (config.HAND_Y_MAX - config.HAND_Y_MIN)
     norm = min(max(norm, 0.0), 1.0)
     return norm * config.HEIGHT
@@ -30,7 +30,7 @@ def hand_to_paddle(cy, frame_h):
 def assign_zones(hands, frame_w, zona_aktif):
     """Tahap PCD: pasangkan tiap tangan ke zona kiri/kanan frame.
 
-    `hands` urut area terbesar (dari find_hand_centers). Aturannya:
+    `hands` = daftar titik tangan (dari HandTracker.read_hands). Aturannya:
     - tangan di kiri garis tengah -> zona kiri, di kanan -> zona kanan;
     - tangan yang masih di pita mati (ZONE_HYSTERESIS) boleh tetap di zona
       yang frame lalu punya tangan, jadi tangan yang menyilang garis tengah
@@ -153,7 +153,7 @@ class Ball:
         arah = -1 if paddle.side == "kanan" else 1  # arah horizontal setelah pantul
         self.vx = arah * math.cos(sudut) * speed
         self.vy = math.sin(sudut) * speed
-        # Item 9: jamin |vx| cukup besar supaya bola tidak bolak-balik vertikal saja.
+        # Jamin |vx| cukup besar supaya bola tidak bolak-balik vertikal saja.
         if abs(self.vx) < config.MIN_VX_2P:
             self.vx = config.MIN_VX_2P if arah > 0 else -config.MIN_VX_2P
         # Dorong bola keluar dari paddle agar tidak menempel dan memantul ulang.
@@ -179,7 +179,7 @@ class Paddle:
                            config.PADDLE_THICK, config.PADDLE_LEN)
 
     def update(self, dt, target):
-        """Item 7: smoothing eksponensial, alpha dari dt clock.tick() tiap paddle."""
+        """Smoothing eksponensial, alpha dari dt clock.tick() tiap paddle."""
         alpha = 1.0 - math.exp(-dt / config.SMOOTH_TAU)
         self.cy += (target - self.cy) * alpha
         half = config.PADDLE_LEN / 2
@@ -211,18 +211,16 @@ class Game:
     # ------------------------------------------------------- jendela debug PCD
     def _buka_debug(self):
         """Jendela debug kecil di pojok kiri atas, tidak menutupi game."""
-        for name, x in (("Debug - Kamera", 0), ("Debug - Mask kulit", 340)):
-            cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(name, *config.DEBUG_SIZE)
-            cv2.moveWindow(name, x, 0)
+        cv2.namedWindow(config.DEBUG_WINDOW, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(config.DEBUG_WINDOW, *config.DEBUG_SIZE)
+        cv2.moveWindow(config.DEBUG_WINDOW, 0, 0)
 
     def _tutup_debug(self):
         """Tutup jendela debug saja; kamera tetap dipakai menu."""
-        for name in ("Debug - Kamera", "Debug - Mask kulit"):
-            try:
-                cv2.destroyWindow(name)
-            except cv2.error:
-                pass
+        try:
+            cv2.destroyWindow(config.DEBUG_WINDOW)
+        except cv2.error:
+            pass
 
     # ------------------------------------------------------------------ input
     def handle_events(self):
@@ -264,11 +262,11 @@ class Game:
 
     # ------------------------------------------------------------------ update
     def update(self, dt):
-        frame, mask, hands, faces = self.tracker.read_hands()
+        frame, debug, hands = self.tracker.read_hands()
         if frame is None:
             print("Kamera tidak terbaca (frame kosong).")
             self.running = False
-            return None, None, None, []
+            return None, None, None
 
         self.zona = assign_zones(hands, frame.shape[1], self.zona_aktif)
         self.update_targets(dt, self.zona, frame.shape[0])
@@ -283,10 +281,10 @@ class Game:
                     # Bola direset ke tengah, arah acak ke pemain yang kehilangan poin.
                     kalah = "kanan" if hasil == "kiri" else "kiri"
                     self.ball.reset(-1 if kalah == "kiri" else 1)
-        return frame, mask, self.zona, faces
+        return frame, debug, self.zona
 
     # -------------------------------------------------------------------- draw
-    def draw(self, frame, mask, zona, faces):
+    def draw(self, debug, zona):
         self.screen.fill((0, 0, 0))
         pygame.draw.line(self.screen, (60, 60, 60), (config.WIDTH / 2, 0),
                          (config.WIDTH / 2, config.HEIGHT), 2)
@@ -312,41 +310,27 @@ class Game:
                                                          config.HEIGHT / 2 + 20)))
         pygame.display.flip()
 
-        # --- jendela debug PCD: zona + centroid tiap tangan ---
-        self.draw_debug(frame, mask, zona, faces)
-        cv2.imshow("Debug - Kamera", frame)
+        # --- jendela debug PCD: hasil pra-pemrosesan + landmark + zona ---
+        self.draw_debug(debug, zona)
+        cv2.imshow(config.DEBUG_WINDOW, debug)
         cv2.waitKey(1)
 
-    def draw_debug(self, frame, mask, zona, faces):
-        h_frame, w_frame = frame.shape[:2]
+    def draw_debug(self, debug, zona):
+        h_frame, w_frame = debug.shape[:2]
         mid = w_frame // 2
-        cv2.line(frame, (mid, 0), (mid, h_frame), (255, 255, 255), 1)
-
-        for (x, y, w, h) in faces:  # kotak wajah yang diabaikan
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
-        for (x, y, w, h) in self.tracker.last_rects:  # kandidat tangan
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 1)
+        cv2.line(debug, (mid, 0), (mid, h_frame), (255, 255, 255), 1)
 
         for sisi, h in zona.items():
             warna = bgr(config.WARNA_KIRI_RGB if sisi == "kiri" else config.WARNA_KANAN_RGB)
             if h is not None:
-                cv2.circle(frame, h, 6, warna, -1)
-                cv2.putText(frame, sisi.upper(), (h[0] + 8, h[1]),
+                cv2.circle(debug, h, 6, warna, -1)
+                cv2.putText(debug, sisi.upper(), (h[0] + 8, h[1]),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
         jumlah = sum(1 for h in zona.values() if h is not None)
-        cv2.putText(frame, f"TANGAN: {jumlah}/2", (6, h_frame - 8),
+        cv2.putText(debug, f"ZONA: {jumlah}/2", (6, h_frame - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45,
                     (0, 255, 0) if jumlah else (0, 0, 255), 1)
-
-        # Mask abu-abu -> BGR supaya garis tengah berwarna tetap terlihat.
-        mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        cv2.line(mask_bgr, (mid, 0), (mid, h_frame), (120, 120, 120), 1)
-        for sisi, h in zona.items():
-            warna = bgr(config.WARNA_KIRI_RGB if sisi == "kiri" else config.WARNA_KANAN_RGB)
-            if h is not None:
-                cv2.circle(mask_bgr, h, 5, warna, -1)
-        cv2.imshow("Debug - Mask kulit", mask_bgr)
 
     # --------------------------------------------------------------------- loop
     def run(self):
@@ -357,9 +341,9 @@ class Game:
                 dt = self.clock.tick(config.FPS) / 1000.0
                 dt = min(dt, 0.05)  # batasi kalau frame sempat macet
                 self.handle_events()
-                frame, mask, zona, faces = self.update(dt)
+                frame, debug, zona = self.update(dt)
                 if frame is not None:
-                    self.draw(frame, mask, zona, faces)
+                    self.draw(debug, zona)
         finally:
             self._tutup_debug()
         return self.keluar_app

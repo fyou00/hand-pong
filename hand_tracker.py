@@ -1,19 +1,23 @@
-"""Tahap PCD: segmentasi warna kulit + pencarian pusat tangan.
+"""Tahap PCD + MediaPipe Hands: pra-pemrosesan citra dan posisi tangan.
 
-Alur: resize 320x240 -> blur -> konversi warna -> threshold -> morfologi
-      -> buang wajah -> kontur terbesar -> pusat (bbox/moment) -> rata-rata N frame.
+Alur: resize 320x240 -> cermin -> CLAHE pada kanal L (LAB) -> blur
+      -> MediaPipe Hands (landmark + label Left/Right) -> anchor pusat telapak.
 """
 
 import time
 
 import cv2
+import mediapipe as mp
 import numpy as np
 
 import config
 
+mp_hands = mp.solutions.hands
+mp_drawing = mp.solutions.drawing_utils
+
 
 def skin_mask(bgr, lower, upper, kernel_size=5):
-    """Tahap 1-3: blur -> ruang warna (HSV/YCrCb) -> thresholding -> morfologi."""
+    """Segmentasi warna kulit. Dipakai calibrate.py untuk eksplorasi rentang HSV."""
     blur = cv2.GaussianBlur(bgr, (5, 5), 0)
     if config.COLOR_SPACE == "ycrcb":
         conv = cv2.cvtColor(blur, cv2.COLOR_BGR2YCrCb)
@@ -33,26 +37,26 @@ def skin_mask(bgr, lower, upper, kernel_size=5):
 class HandTracker:
     def __init__(self, cam_index=config.CAM_INDEX):
         self.cap = self._open_camera(cam_index)
-        self.history = []        # riwayat pusat tangan untuk perata-rataan
-        self.last_rect = None    # bbox tangan terakhir (untuk gambar debug)
-        self.last_rects = []     # bbox semua tangan pada mode dua pemain
 
-        self.face_cascade = None
-        if config.USE_FACE_HAAR:
-            path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-            self.face_cascade = cv2.CascadeClassifier(path)
-            if self.face_cascade.empty():
-                print("[PERINGATAN] Cascade wajah tidak ditemukan, deteksi wajah dimatikan.")
-                self.face_cascade = None
+        # Tahap 1: CLAHE untuk meratakan kontras cahaya sebelum dideteksi.
+        self.clahe = cv2.createCLAHE(clipLimit=config.CLAHE_CLIP,
+                                     tileGridSize=config.CLAHE_TILE)
+
+        # Tahap 3: MediaPipe Hands, hanya untuk landmark + label Left/Right.
+        self.hands = mp_hands.Hands(static_image_mode=False,
+                                    max_num_hands=config.MP_MAX_HANDS,
+                                    model_complexity=config.MP_MODEL_COMPLEXITY,
+                                    min_detection_confidence=config.MP_DETECTION_CONF,
+                                    min_tracking_confidence=config.MP_TRACKING_CONF)
 
     # ------------------------------------------------------------------ kamera
     def _open_camera(self, cam_index):
-        """Item 5: kamera dibuka pada index RGB; index 0 (kamera IR) tidak pernah dipakai.
+        """Kamera dibuka pada index RGB; index 0 (kamera IR) tidak pernah dipakai.
 
         Kamera IR (Windows Hello) menghasilkan frame hitam/abu-abu, sehingga
-        segmentasi warna kulit pasti gagal. Karena itu index 0 tidak pernah
-        dibuka: kalau CAM_INDEX = 0, nilainya diabaikan dan pencarian otomatis
-        dimulai dari CAM_INDEX_CANDIDATES (index 1 ke atas).
+        deteksi tangan pasti gagal. Karena itu index 0 tidak pernah dibuka:
+        kalau CAM_INDEX = 0, nilainya diabaikan dan pencarian otomatis dimulai
+        dari CAM_INDEX_CANDIDATES (index 1 ke atas).
         """
         if cam_index == 0:
             print("[PERINGATAN] CAM_INDEX = 0 adalah kamera IR dan tidak dipakai; "
@@ -71,7 +75,7 @@ class HandTracker:
                 raise RuntimeError(self._camera_error([cam_index]))
             if sat < 10 or bright < 10:
                 print("[PERINGATAN] Frame kamera ini hampir tanpa warna (kamera IR?). "
-                      "Mask kulit akan hitam. Coba index lain di CAM_INDEX (config.py).")
+                      "Coba index lain di CAM_INDEX (config.py).")
             return cap
 
         candidates = list(config.CAM_INDEX_CANDIDATES)
@@ -98,7 +102,7 @@ class HandTracker:
 
         if fallback is not None:
             print("[PERINGATAN] Tidak ada kamera berwarna yang terbuka; "
-                  "memakai kamera tanpa warna -> mask kulit akan hitam.")
+                  "memakai kamera tanpa warna -> deteksi tangan bisa gagal.")
             return fallback
         raise RuntimeError(self._camera_error(candidates))
 
@@ -126,139 +130,79 @@ class HandTracker:
             "  2. Kamera sedang dipakai aplikasi lain (Zoom, Teams, browser).\n"
             f"  3. Index kamera salah (dicoba: {candidates}). Ubah CAM_INDEX di config.py.\n"
             "  Catatan: index 0 adalah kamera IR dan tidak pernah dipakai; kamera IR\n"
-            "  tidak bisa dipakai untuk segmentasi warna."
+            "  tidak bisa dipakai untuk deteksi tangan."
         )
 
     def release(self):
         self.cap.release()
+        self.hands.close()
 
     # ------------------------------------------------------------- pipeline PCD
-    def _read_frame(self):
-        """Ambil frame, resize + cermin, lalu buang area wajah dari mask.
+    def preprocess(self, frame):
+        """Tahap 1: CLAHE pada kanal L (LAB) lalu blur.
 
-        Kembalikan (frame, mask, faces); frame None bila kamera gagal.
+        CLAHE dipakai supaya kontras tetap terbaca saat cahaya tidak rata
+        (mis. tangan di dekat jendela), tanpa mengubah warna asli terlalu jauh.
+        """
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        l = self.clahe.apply(l)
+        hasil = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
+        return cv2.GaussianBlur(hasil, (config.BLUR_KSIZE, config.BLUR_KSIZE), 0)
+
+    def anchor(self, landmark, shape):
+        """Tahap 4: anchor tangan = pusat telapak (landmark 9) dalam piksel."""
+        h_frame, w_frame = shape[:2]
+        titik = landmark.landmark[config.ANCHOR_LANDMARK]
+        return int(titik.x * w_frame), int(titik.y * h_frame)
+
+    def read(self):
+        """Kembalikan (frame, debug, hands).
+
+        frame : gambar kamera 320x240 yang sudah dicerminkan (tanpa gambar debug)
+        debug : frame pra-pemrosesan + skeleton landmark + label + titik anchor
+        hands : {"Left": (x, y), "Right": (x, y)} dalam koordinat frame.
+                Label mengikuti gambar yang sudah dicerminkan, jadi "Left" berarti
+                tangan di sisi kiri layar.
         """
         ok, frame = self.cap.read()
         if not ok:
-            return None, None, None
+            return None, None, {}
 
-        # Item 8: semua deteksi dikerjakan di 320x240 agar ringan.
+        # Semua deteksi dikerjakan di 320x240 agar ringan.
         frame = cv2.resize(frame, (config.PROC_W, config.PROC_H),
                            interpolation=cv2.INTER_AREA)
         frame = cv2.flip(frame, 1)  # cermin agar gerakan terasa natural
 
-        faces = self.detect_faces(frame)
-        mask = self.segment(frame, faces)
-        return frame, mask, faces
+        prep = self.preprocess(frame)                    # Tahap 1: CLAHE + blur
+        rgb = cv2.cvtColor(prep, cv2.COLOR_BGR2RGB)
+        hasil = self.hands.process(rgb)                  # Tahap 2: MediaPipe Hands
 
-    def read(self):
-        """Kembalikan (frame, mask, center, faces); center None bila tak ada tangan."""
-        frame, mask, faces = self._read_frame()
-        if frame is None:
-            return None, None, None, []
-        return frame, mask, self.find_hand_center(mask), faces
+        debug = prep.copy()
+        posisi = {}
+        if hasil.multi_hand_landmarks:
+            for landmark, handed in zip(hasil.multi_hand_landmarks,
+                                        hasil.multi_handedness):
+                label = handed.classification[0].label   # "Left" / "Right"
+                # Tahap 3: gambar landmark supaya tahap PCD terlihat.
+                mp_drawing.draw_landmarks(debug, landmark, mp_hands.HAND_CONNECTIONS)
+                # Tahap 4: anchor pusat telapak.
+                titik = self.anchor(landmark, debug.shape)
+                cv2.circle(debug, titik, 6, (0, 255, 0), -1)
+                cv2.putText(debug, label, (titik[0] + 8, titik[1]),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                # Satu tangan per label: yang pertama (skor tertinggi) dipakai.
+                posisi.setdefault(label, titik)
+
+        jumlah = len(posisi)
+        cv2.putText(debug, f"TANGAN: {jumlah}", (6, debug.shape[0] - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                    (0, 255, 0) if jumlah else (0, 0, 255), 1)
+        return frame, debug, posisi
 
     def read_hands(self):
-        """Varian dua pemain: (frame, mask, daftar pusat tangan, faces)."""
-        frame, mask, faces = self._read_frame()
+        """Varian dua pemain: (frame, debug, daftar pusat tangan Left lalu Right)."""
+        frame, debug, hands = self.read()
         if frame is None:
-            return None, None, [], []
-        return frame, mask, self.find_hand_centers(mask), faces
-
-    def detect_faces(self, frame):
-        """Item 2: kotak wajah (Haar) diperluas sedikit agar dagu/leher ikut terbuang."""
-        if self.face_cascade is None:
-            return []
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        found = self.face_cascade.detectMultiScale(gray, scaleFactor=1.1,
-                                                  minNeighbors=5, minSize=(60, 60))
-        h_frame, w_frame = frame.shape[:2]
-        boxes = []
-        for (x, y, w, h) in found:
-            mx, my = int(w * config.FACE_MARGIN), int(h * config.FACE_MARGIN)
-            x0, y0 = max(0, x - mx), max(0, y - my)
-            x1, y1 = min(w_frame, x + w + mx), min(h_frame, y + h + my)
-            boxes.append((x0, y0, x1 - x0, y1 - y0))
-        return boxes
-
-    def segment(self, frame, faces=()):
-        """Mask kulit, lalu area wajah dan (opsional) bagian atas dibuang."""
-        if config.COLOR_SPACE == "ycrcb":
-            lower, upper = config.YCRCB_LOWER, config.YCRCB_UPPER
-        else:
-            lower, upper = config.HSV_LOWER, config.HSV_UPPER
-
-        mask = skin_mask(frame, lower, upper)
-
-        for (x, y, w, h) in faces:
-            mask[y:y + h, x:x + w] = 0
-
-        if config.ROI_TOP > 0:
-            mask[:int(mask.shape[0] * config.ROI_TOP), :] = 0
-        return mask
-
-    def find_hand_center(self, mask):
-        """Tahap 4-5: kontur terbesar = tangan, lalu hitung pusatnya."""
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
-        min_area = config.MIN_AREA_RATIO * mask.shape[0] * mask.shape[1]
-        largest = max(contours, key=cv2.contourArea) if contours else None
-
-        # Item 3: ambang area relatif terhadap luas frame.
-        if largest is None or cv2.contourArea(largest) < min_area:
-            self.history.clear()
-            self.last_rect = None
-            return None
-
-        x, y, w, h = cv2.boundingRect(largest)
-        self.last_rect = (x, y, w, h)
-
-        # Item 4: pilih pusat bounding box atau centroid momen.
-        if config.CENTER_MODE == "moment":
-            m = cv2.moments(largest)
-            if m["m00"] == 0:
-                self.history.clear()
-                return None
-            cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
-        else:
-            cx, cy = x + w / 2, y + h / 2
-
-        # Item 4: rata-rata beberapa frame terakhir agar tidak bergetar.
-        self.history.append((cx, cy))
-        if len(self.history) > config.AVG_FRAMES:
-            self.history.pop(0)
-        n = len(self.history)
-        return (int(sum(p[0] for p in self.history) / n),
-                int(sum(p[1] for p in self.history) / n))
-
-    def find_hand_centers(self, mask, max_hands=config.MAX_HANDS):
-        """Tahap 4-5 (dua pemain): centroid dari maksimal `max_hands` kontur terbesar.
-
-        Beda dengan find_hand_center: tiap tangan dianggap objek terpisah, jadi
-        tidak ada rata-rata N frame (smoothing-nya di paddle, pakai dt). Hasil
-        diurut area terbesar -> terkecil, supaya tangan utama (lebih dekat
-        kamera) dipakai lebih dulu saat dua tangan jatuh di zona yang sama.
-        """
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
-        # Item 3: ambang area relatif terhadap luas frame.
-        min_area = config.MIN_AREA_RATIO * mask.shape[0] * mask.shape[1]
-        kandidat = [c for c in contours if cv2.contourArea(c) >= min_area]
-        kandidat.sort(key=cv2.contourArea, reverse=True)
-
-        pusat = []
-        self.last_rects = []
-        for c in kandidat[:max_hands]:
-            x, y, w, h = cv2.boundingRect(c)
-            # Item 4: pusat bounding box atau centroid momen, sama seperti mode satu pemain.
-            if config.CENTER_MODE == "moment":
-                m = cv2.moments(c)
-                if m["m00"] == 0:
-                    continue
-                cx, cy = m["m10"] / m["m00"], m["m01"] / m["m00"]
-            else:
-                cx, cy = x + w / 2, y + h / 2
-            pusat.append((int(cx), int(cy)))
-            self.last_rects.append((x, y, w, h))
-        return pusat
+            return None, None, []
+        return frame, debug, [hands[k] for k in ("Left", "Right") if k in hands]

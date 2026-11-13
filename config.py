@@ -22,20 +22,26 @@ SMOOTH_TAU = 0.08    # item 7: konstanta waktu smoothing paddle (detik)
 # ------------------------------------------------------------------- tahap PCD
 PROC_W, PROC_H = 320, 240     # item 8: deteksi diproses di resolusi kecil
 DEBUG_SIZE = (320, 240)       # ukuran jendela debug OpenCV
+DEBUG_WINDOW = "Debug - Kamera"   # menampilkan pra-pemrosesan + landmark + anchor
 
-COLOR_SPACE = "hsv"           # "hsv" atau "ycrcb"
+COLOR_SPACE = "hsv"           # "hsv" atau "ycrcb" (hanya untuk calibrate.py)
 HSV_LOWER = (0, 40, 60)
 HSV_UPPER = (25, 255, 255)
 YCRCB_LOWER = (0, 133, 77)
 YCRCB_UPPER = (255, 173, 127)
 
-MIN_AREA_RATIO = 0.02         # item 3: tangan minimal 2% dari luas frame
-CENTER_MODE = "bbox"          # item 4: "bbox" (titik tengah kotak) atau "moment"
-AVG_FRAMES = 5                # item 4: jumlah frame yang dirata-rata
+# ------------------------------------------------------- tahap PCD + MediaPipe
+CLAHE_CLIP = 2.0              # tahap 1: batas peningkatan kontras CLAHE
+CLAHE_TILE = (8, 8)
+BLUR_KSIZE = 5                # tahap 1: ukuran kernel Gaussian blur
 
-USE_FACE_HAAR = True          # item 2: buang area wajah dari mask
-FACE_MARGIN = 0.15            # perluas kotak wajah 15% tiap sisi
-ROI_TOP = 0.0                 # item 2 (alternatif): 0 = nonaktif, 0.35 = buang 35% atas
+MP_MAX_HANDS = 2              # tahap 3: jumlah tangan maksimum
+MP_MODEL_COMPLEXITY = 1       # 0 = cepat, 1 = akurat
+MP_DETECTION_CONF = 0.6
+MP_TRACKING_CONF = 0.5
+
+# tahap 4: anchor = pusat telapak (9 = middle finger MCP, 8 = ujung telunjuk)
+ANCHOR_LANDMARK = 9
 
 # item 6: 20%..80% lebar frame dipetakan ke 0..WIDTH
 HAND_X_MIN, HAND_X_MAX = 0.2, 0.8
@@ -56,7 +62,6 @@ MAX_BOUNCE_ANGLE = 60         # derajat, sudut pantul maksimum dari offset paddl
 # 20%..80% tinggi frame dipetakan ke 0..HEIGHT (paddle bergerak di sumbu y)
 HAND_Y_MIN, HAND_Y_MAX = 0.2, 0.8
 ZONE_HYSTERESIS = 0.05        # pita mati di garis tengah (5% lebar frame)
-MAX_HANDS = 2                 # jumlah tangan yang dilacak
 
 # Warna pemain (RGB untuk pygame; OpenCV memakai urutan terbalik)
 WARNA_KIRI_RGB = (90, 255, 140)
