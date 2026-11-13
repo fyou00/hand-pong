@@ -9,9 +9,15 @@ Informatika. Pendekatan: hybrid, yaitu MediaPipe Hands untuk landmark tangan
 
 ## Lingkungan
 
-- macOS Intel, Python 3.12 di `.venv`
+- macOS Intel, **Python 3.11.18** di `.venv` (bukan 3.12)
 - Gunakan webcam RGB. Jangan pakai kamera IR laptop Lenovo ThinkPad T480s.
-- Dependensi (`requirements.txt`): `opencv-python<5`, `numpy`, `pygame`, `mediapipe==0.10.14`
+- Dependensi (`requirements.txt`): `opencv-contrib-python<5`, `numpy`, `pygame`,
+  `mediapipe==0.10.14`
+- **Hanya boleh ada satu paket OpenCV terpasang**, yaitu
+  `opencv-contrib-python<5`. `mediapipe` menarik `opencv-contrib-python` tanpa
+  pin, jadi tanpa pin di `requirements.txt` ia memasang OpenCV 5 dan menimpa
+  `opencv-python` 4.x (gejalanya: `cv2.__version__` jadi 5.0.0). Jangan
+  menambahkan `opencv-python` lagi — dua paket itu berbagi folder `cv2`.
 - Gunakan API `mp.solutions.hands` (bukan Tasks API) sesuai versi yang dipin.
 
 ## Struktur file

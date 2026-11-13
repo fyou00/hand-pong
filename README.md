@@ -16,7 +16,7 @@ tangan (Left/Right), sedangkan tahap pengolahan citra digital dikerjakan sendiri
 | `pong_2p.py` | Game dua pemain: dua paddle vertikal, label Left/Right, skor sampai 7 |
 | `calibrate.py` | Opsional/legacy: eksplorasi rentang warna kulit dengan trackbar. Tidak dipakai game |
 | `config.py` | Semua konstanta game dan parameter PCD |
-| `requirements.txt` | `opencv-python<5`, `numpy`, `pygame`, `mediapipe==0.10.14` |
+| `requirements.txt` | `opencv-contrib-python<5`, `numpy`, `pygame`, `mediapipe==0.10.14` |
 
 ## Instalasi
 
@@ -29,6 +29,13 @@ pip install -r requirements.txt
 
 > `mediapipe` dipin ke **0.10.14** dan dipakai lewat API `mp.solutions.hands`
 > (bukan Tasks API). Versi lain punya nama API yang berbeda.
+>
+> OpenCV dipin lewat `opencv-contrib-python<5`, **bukan** `opencv-python`.
+> `mediapipe` menarik `opencv-contrib-python` tanpa pin; kalau tidak dibatasi,
+> ia memasang OpenCV 5 dan menimpa OpenCV 4 (`cv2.__version__` jadi 5.0.0).
+> Jangan memasang kedua paket itu bersamaan karena keduanya berbagi folder
+> `cv2`. Cek dengan `python -c "import cv2; print(cv2.__version__)"` →
+> harus `4.x`.
 
 ## Menjalankan
 
