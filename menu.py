@@ -99,10 +99,17 @@ def _gambar(screen, buttons, index):
 
 
 def run_menu(screen, clock):
-    """Tampilkan menu. Kembalikan "single" / "two", atau None kalau keluar."""
+    """Tampilkan menu. Kembalikan "single" / "two", atau None kalau keluar.
+
+    Navigasi: panah atas/bawah memindah sorotan (memutar), Enter/klik kiri
+    menjalankan pilihan, Esc keluar aplikasi. Sorotan juga mengikuti kursor
+    mouse, tetapi hanya saat mouse benar-benar bergerak — kalau tidak, kursor
+    yang diam di atas sebuah tombol akan terus menimpa pilihan keyboard.
+    """
     pygame.display.set_caption(config.JUDUL_APLIKASI)
     buttons = make_buttons()
     index = 0
+    pos_lama = pygame.mouse.get_pos()
 
     while True:
         clock.tick(config.FPS)
@@ -128,11 +135,13 @@ def run_menu(screen, clock):
                         if mode is not None:
                             return mode
 
-        # Sorot tombol di bawah kursor mouse.
+        # Sorot tombol di bawah kursor, hanya bila mouse bergerak.
         pos = pygame.mouse.get_pos()
-        for i, tombol in enumerate(buttons):
-            if tombol.is_clicked(pos):
-                index = i
+        if pos != pos_lama:
+            pos_lama = pos
+            for i, tombol in enumerate(buttons):
+                if tombol.is_clicked(pos):
+                    index = i
 
         _gambar(screen, buttons, index)
 
