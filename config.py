@@ -62,7 +62,6 @@ MAX_BOUNCE_ANGLE = 60         # derajat, sudut pantul maksimum dari offset paddl
 
 # 20%..80% tinggi frame dipetakan ke 0..HEIGHT (paddle bergerak di sumbu y)
 HAND_Y_MIN, HAND_Y_MAX = 0.2, 0.8
-ZONE_HYSTERESIS = 0.05        # pita mati di garis tengah (5% lebar frame)
 
 # Warna pemain (RGB untuk pygame; OpenCV memakai urutan terbalik)
 WARNA_KIRI_RGB = (90, 255, 140)

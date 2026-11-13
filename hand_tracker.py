@@ -199,10 +199,3 @@ class HandTracker:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45,
                     (0, 255, 0) if jumlah else (0, 0, 255), 1)
         return frame, debug, posisi
-
-    def read_hands(self):
-        """Varian dua pemain: (frame, debug, daftar pusat tangan Left lalu Right)."""
-        frame, debug, hands = self.read()
-        if frame is None:
-            return None, None, []
-        return frame, debug, [hands[k] for k in ("Left", "Right") if k in hands]

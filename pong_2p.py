@@ -2,7 +2,8 @@
 
 Struktur: Ball (fisika + sweep), Paddle (vertikal + smoothing), Game (loop).
 Tahap PCD ada di hand_tracker.py: pra-pemrosesan -> MediaPipe Hands ->
-anchor pusat telapak; tiap tangan dipasangkan ke zona kiri/kanan frame.
+anchor pusat telapak. Label Left/Right dari MediaPipe langsung dipakai:
+Left = paddle kiri, Right = paddle kanan.
 
 Dipakai menu.py lewat run_game(screen, clock, tracker). Untuk pengujian tanpa
 menu, `python pong_2p.py` tetap bisa dijalankan sendiri.
@@ -27,46 +28,14 @@ def hand_to_paddle(cy, frame_h):
     norm = min(max(norm, 0.0), 1.0)
     return norm * config.HEIGHT
 
-def assign_zones(hands, frame_w, zona_aktif):
-    """Tahap PCD: pasangkan tiap tangan ke zona kiri/kanan frame.
+def label_ke_sisi(hands):
+    """Pemetaan label MediaPipe ke sisi paddle.
 
-    `hands` = daftar titik tangan (dari HandTracker.read_hands). Aturannya:
-    - tangan di kiri garis tengah -> zona kiri, di kanan -> zona kanan;
-    - tangan yang masih di pita mati (ZONE_HYSTERESIS) boleh tetap di zona
-      yang frame lalu punya tangan, jadi tangan yang menyilang garis tengah
-      tidak langsung berpindah pemain;
-    - zona tanpa tangan bernilai None -> paddle diam di posisi terakhir.
-    `zona_aktif` diubah di tempat (status zona pada frame ini).
+    Frame sudah dicerminkan di hand_tracker, jadi label "Left" berarti tangan
+    yang tampak di sisi kiri layar. Tidak ada pembagian zona lagi: satu label
+    hanya bisa menggerakkan satu paddle.
     """
-    mid = frame_w / 2.0
-    band = config.ZONE_HYSTERESIS * frame_w
-    sisa = list(hands)
-    hasil = {}
-    for zona in ("kiri", "kanan"):
-        pilih = None
-        for h in sisa:
-            x = h[0]
-            if zona == "kiri":
-                dalam = x < mid or (zona_aktif[zona] and x < mid + band)
-            else:
-                dalam = x > mid or (zona_aktif[zona] and x > mid - band)
-            if dalam:
-                pilih = h
-                break
-        if pilih is not None:
-            sisa.remove(pilih)
-        hasil[zona] = pilih
-        zona_aktif[zona] = pilih is not None
-
-    # Kunci tangan ke zonanya: posisi x dibatasi pada separuh frame miliknya.
-    for zona, h in hasil.items():
-        if h is None:
-            continue
-        if zona == "kiri":
-            hasil[zona] = (min(max(h[0], 0), mid), h[1])
-        else:
-            hasil[zona] = (min(max(h[0], mid), frame_w), h[1])
-    return hasil
+    return {"kiri": hands.get("Left"), "kanan": hands.get("Right")}
 
 class Ball:
     """Bola. Kecepatan dalam piksel/detik; tabrakan paddle dicek dengan sapuan."""
@@ -199,9 +168,8 @@ class Game:
         self.paddles = {"kiri": Paddle("kiri"), "kanan": Paddle("kanan")}
         # Target paddle disimpan: kalau tangan hilang, paddle diam di posisi terakhir.
         self.target = {"kiri": config.HEIGHT / 2, "kanan": config.HEIGHT / 2}
-        # Zona mana yang frame lalu punya tangan (untuk histeresis garis tengah).
-        self.zona_aktif = {"kiri": False, "kanan": False}
-        self.zona = {"kiri": None, "kanan": None}
+        # Titik anchor tangan per sisi (None = tangan sisi itu tidak terlihat).
+        self.tangan = {"kiri": None, "kanan": None}
         # Lama tangan tidak terlihat per sisi; keyboard aktif setelah HAND_LOST_DELAY.
         self.hilang_dt = {"kiri": 0.0, "kanan": 0.0}
         self.ball = Ball()
@@ -241,7 +209,7 @@ class Game:
         self.winner = None
         self.ball.reset()
 
-    def update_targets(self, dt, zona, frame_h):
+    def update_targets(self, dt, tangan, frame_h):
         """Target paddle: tangan dulu; keyboard hanya setelah tangan hilang lama.
 
         Item 2: tiap sisi punya timer sendiri. Selama tangan masih terlihat
@@ -250,7 +218,7 @@ class Game:
         """
         keys = pygame.key.get_pressed()
         for sisi in ("kiri", "kanan"):
-            h = zona[sisi]
+            h = tangan[sisi]
             if h is not None:
                 self.target[sisi] = hand_to_paddle(h[1], frame_h)
                 self.hilang_dt[sisi] = 0.0
@@ -276,14 +244,14 @@ class Game:
 
     # ------------------------------------------------------------------ update
     def update(self, dt):
-        frame, debug, hands = self.tracker.read_hands()
+        frame, debug, hands = self.tracker.read()
         if frame is None:
             print("Kamera tidak terbaca (frame kosong).")
             self.running = False
             return None, None, None
 
-        self.zona = assign_zones(hands, frame.shape[1], self.zona_aktif)
-        self.update_targets(dt, self.zona, frame.shape[0])
+        self.tangan = label_ke_sisi(hands)
+        self.update_targets(dt, self.tangan, frame.shape[0])
 
         if self.winner is None:
             hasil = self.ball.update(dt, list(self.paddles.values()))
@@ -295,10 +263,10 @@ class Game:
                     # Bola direset ke tengah, arah acak ke pemain yang kehilangan poin.
                     kalah = "kanan" if hasil == "kiri" else "kiri"
                     self.ball.reset(-1 if kalah == "kiri" else 1)
-        return frame, debug, self.zona
+        return frame, debug, self.tangan
 
     # -------------------------------------------------------------------- draw
-    def draw(self, debug, zona):
+    def draw(self, debug, tangan):
         self.screen.fill((0, 0, 0))
         pygame.draw.line(self.screen, (60, 60, 60), (config.WIDTH / 2, 0),
                          (config.WIDTH / 2, config.HEIGHT), 2)
@@ -324,25 +292,25 @@ class Game:
                                                          config.HEIGHT / 2 + 20)))
         pygame.display.flip()
 
-        # --- jendela debug PCD: hasil pra-pemrosesan + landmark + zona ---
-        self.draw_debug(debug, zona)
+        # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---
+        self.draw_debug(debug, tangan)
         cv2.imshow(config.DEBUG_WINDOW, debug)
         cv2.waitKey(1)
 
-    def draw_debug(self, debug, zona):
+    def draw_debug(self, debug, tangan):
         h_frame, w_frame = debug.shape[:2]
         mid = w_frame // 2
         cv2.line(debug, (mid, 0), (mid, h_frame), (255, 255, 255), 1)
 
-        for sisi, h in zona.items():
+        for sisi, h in tangan.items():
             warna = bgr(config.WARNA_KIRI_RGB if sisi == "kiri" else config.WARNA_KANAN_RGB)
             if h is not None:
                 cv2.circle(debug, h, 6, warna, -1)
                 cv2.putText(debug, sisi.upper(), (h[0] + 8, h[1]),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, warna, 1)
 
-        jumlah = sum(1 for h in zona.values() if h is not None)
-        cv2.putText(debug, f"ZONA: {jumlah}/2", (6, h_frame - 8),
+        jumlah = sum(1 for h in tangan.values() if h is not None)
+        cv2.putText(debug, f"TANGAN: {jumlah}/2", (6, h_frame - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45,
                     (0, 255, 0) if jumlah else (0, 0, 255), 1)
 
@@ -355,9 +323,9 @@ class Game:
                 dt = self.clock.tick(config.FPS) / 1000.0
                 dt = min(dt, 0.05)  # batasi kalau frame sempat macet
                 self.handle_events()
-                frame, debug, zona = self.update(dt)
+                frame, debug, tangan = self.update(dt)
                 if frame is not None:
-                    self.draw(debug, zona)
+                    self.draw(debug, tangan)
         finally:
             self._tutup_debug()
         return self.keluar_app
