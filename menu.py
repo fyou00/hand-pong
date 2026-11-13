@@ -28,10 +28,16 @@ _kamera = {"tracker": None, "pesan": None}
 
 
 def get_tracker():
-    """Buka kamera sekali saja. Kalau gagal, pesannya disimpan untuk menu."""
-    if _kamera["tracker"] is None and _kamera["pesan"] is None:
+    """Buka kamera bila belum ada; pesan kegagalan disimpan untuk menu.
+
+    Percobaan hanya terjadi saat pemain memilih mode (bukan tiap frame), jadi
+    kamera tetap dibuka sekali saja selama pemakaian normal. Kalau kamera
+    sempat gagal/terputus, pemilihan berikutnya mencoba membukanya lagi.
+    """
+    if _kamera["tracker"] is None:
         try:
             _kamera["tracker"] = HandTracker()
+            _kamera["pesan"] = None
         except RuntimeError as exc:  # kamera tidak ada / tidak diizinkan
             _kamera["pesan"] = str(exc)
     return _kamera["tracker"]
@@ -156,9 +162,16 @@ def main():
             if mode is None:
                 break
             fungsi = next(f for kode, _, f in PILIHAN if kode == mode)
+            tracker = get_tracker()
             # Game membuat state baru tiap panggilan: skor/bola/nyawa mulai awal.
-            if fungsi(screen, clock, get_tracker()):
+            if fungsi(screen, clock, tracker):
                 break  # jendela ditutup saat bermain -> keluar aplikasi
+            if tracker is not None and tracker.terputus:
+                # Kamera mati di tengah game: beri tahu di menu dan lepas kamera
+                # supaya pemilihan berikutnya mencoba membukanya lagi.
+                _kamera["pesan"] = ("Kamera terputus saat bermain. Periksa kabel/izin "
+                                    "kamera, lalu pilih mode lagi untuk mencoba ulang.")
+                close_camera()
     finally:
         close_camera()
         cv2.destroyAllWindows()

@@ -43,6 +43,9 @@ class HandTracker:
                                      tileGridSize=config.CLAHE_TILE)
 
         # Tahap 3: MediaPipe Hands, hanya untuk landmark + label Left/Right.
+        # True bila frame terakhir gagal dibaca (kamera dicabut / dipakai proses lain).
+        self.terputus = False
+
         self.hands = mp_hands.Hands(static_image_mode=False,
                                     max_num_hands=config.MP_MAX_HANDS,
                                     model_complexity=config.MP_MODEL_COMPLEXITY,
@@ -167,7 +170,9 @@ class HandTracker:
         """
         ok, frame = self.cap.read()
         if not ok:
+            self.terputus = True
             return None, None, {}
+        self.terputus = False
 
         # Semua deteksi dikerjakan di 320x240 agar ringan.
         frame = cv2.resize(frame, (config.PROC_W, config.PROC_H),
