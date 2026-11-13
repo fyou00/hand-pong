@@ -62,5 +62,7 @@ MAX_HANDS = 2                 # jumlah tangan yang dilacak
 WARNA_KIRI_RGB = (90, 255, 140)
 WARNA_KANAN_RGB = (255, 170, 80)
 
-# item 5: index kamera. None = otomatis pilih kamera berwarna (kamera IR dilewati).
-CAM_INDEX = None
+# item 5: index kamera. Index 0 di mesin ini adalah kamera IR dan TIDAK PERNAH
+# dipakai. Default 1 = kamera RGB. None = cari otomatis mulai dari index 1.
+CAM_INDEX = 1
+CAM_INDEX_CANDIDATES = (1, 2, 3)   # index yang dicoba saat CAM_INDEX = None

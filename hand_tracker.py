@@ -47,12 +47,18 @@ class HandTracker:
 
     # ------------------------------------------------------------------ kamera
     def _open_camera(self, cam_index):
-        """Item 5: kamera dicek isOpened() + dipilih yang benar-benar berwarna.
+        """Item 5: kamera dibuka pada index RGB; index 0 (kamera IR) tidak pernah dipakai.
 
         Kamera IR (Windows Hello) menghasilkan frame hitam/abu-abu, sehingga
-        segmentasi warna kulit pasti gagal. Kalau CAM_INDEX = None, kamera
-        seperti itu dilewati dan dicari kamera RGB.
+        segmentasi warna kulit pasti gagal. Karena itu index 0 tidak pernah
+        dibuka: kalau CAM_INDEX = 0, nilainya diabaikan dan pencarian otomatis
+        dimulai dari CAM_INDEX_CANDIDATES (index 1 ke atas).
         """
+        if cam_index == 0:
+            print("[PERINGATAN] CAM_INDEX = 0 adalah kamera IR dan tidak dipakai; "
+                  f"mencari kamera berwarna di index {config.CAM_INDEX_CANDIDATES}.")
+            cam_index = None
+
         if cam_index is not None:
             cap = cv2.VideoCapture(cam_index)
             if not cap.isOpened():
@@ -65,10 +71,10 @@ class HandTracker:
                 raise RuntimeError(self._camera_error([cam_index]))
             if sat < 10 or bright < 10:
                 print("[PERINGATAN] Frame kamera ini hampir tanpa warna (kamera IR?). "
-                      "Mask kulit akan hitam. Coba CAM_INDEX lain di config.py.")
+                      "Mask kulit akan hitam. Coba index lain di CAM_INDEX (config.py).")
             return cap
 
-        candidates = [0, 1, 2]
+        candidates = list(config.CAM_INDEX_CANDIDATES)
         fallback = None
         for idx in candidates:
             cap = cv2.VideoCapture(idx)
@@ -119,7 +125,8 @@ class HandTracker:
             "(System Settings > Privacy & Security > Camera).\n"
             "  2. Kamera sedang dipakai aplikasi lain (Zoom, Teams, browser).\n"
             f"  3. Index kamera salah (dicoba: {candidates}). Ubah CAM_INDEX di config.py.\n"
-            "  Catatan: kamera IR (Windows Hello) tidak bisa dipakai untuk segmentasi warna."
+            "  Catatan: index 0 adalah kamera IR dan tidak pernah dipakai; kamera IR\n"
+            "  tidak bisa dipakai untuk segmentasi warna."
         )
 
     def release(self):

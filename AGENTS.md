@@ -38,7 +38,9 @@ gerakan tangan lewat webcam. Tugas akhir mata kuliah Pengolahan Citra Digital.
 - **Konstanta baru masuk `config.py`**, jangan di-hardcode di dalam fungsi.
 - **Kamera IR tidak boleh dipakai** untuk segmentasi warna kulit. Index 0 di
   mesin ini adalah kamera IR (frame hitam, mean S ≈ 0.7); kamera RGB di index 1.
-  `CAM_INDEX = None` membuat `HandTracker` memilih kamera berwarna otomatis.
+  `CAM_INDEX = 1` adalah default dan **index 0 tidak pernah dibuka**; kalau
+  `CAM_INDEX = 0`, nilainya diabaikan dan `HandTracker` mencari kamera berwarna
+  mulai dari `CAM_INDEX_CANDIDATES` (1, 2, 3).
 - **Anchor tangan = pusat bounding box (`CENTER_MODE = "bbox"`) atau centroid
   kontur (`"moment"`), bukan ujung telunjuk.** Jangan menambah mode
   `"fingertip"`, `cv2.convexityDefects`, atau MediaPipe: game hanya memakai
@@ -79,6 +81,7 @@ Bukti yang dipakai saat memeriksa perubahan (bukan sekadar "tidak error"):
 | `HAND_Y_MIN`, `HAND_Y_MAX` | Rentang tinggi frame (0.2..0.8) yang dipetakan ke `0..HEIGHT` (mode dua pemain) |
 | `MAX_HANDS`, `ZONE_HYSTERESIS` | Jumlah tangan yang dilacak (2) dan pita mati di garis tengah (5% lebar frame) |
 | `PROC_W`, `PROC_H` | Resolusi pemrosesan (320×240) |
+| `CAM_INDEX`, `CAM_INDEX_CANDIDATES` | Index kamera (default `1`; `0` = kamera IR, tidak pernah dipakai) dan daftar index untuk mode otomatis (`None`) |
 
 ## Jebakan yang sudah ditemui
 

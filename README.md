@@ -85,11 +85,11 @@ Jendela debug sekarang dibuat 320×240 di pojok kiri atas lewat
 Kalau masih ketutupan, geser jendela debug atau nonaktifkan sementara dua
 baris `cv2.imshow` di `pong.py`.
 
-**Mask kulit hitam** — cek output terminal. `HandTracker` sekarang memilih
-kamera yang frame-nya benar-benar berwarna; kamera IR (Windows Hello) atau
-kamera yang belum memberi izin akan menghasilkan frame hitam/abu-abu dan
-dilewati. Kalau pesan `[PERINGATAN] ... tanpa warna` muncul, set `CAM_INDEX`
-di `config.py` ke index kamera RGB (misalnya `CAM_INDEX = 1`).
+**Mask kulit hitam** — cek output terminal. `HandTracker` sekarang membuka
+kamera RGB langsung di `CAM_INDEX = 1`; **index 0 tidak pernah dipakai** karena
+di mesin ini index 0 adalah kamera IR (Windows Hello) yang frame-nya
+hitam/abu-abu. Kalau pesan `[PERINGATAN] ... tanpa warna` muncul, ganti
+`CAM_INDEX` di `config.py` ke index kamera RGB lain (misalnya `2`).
 
 **Tangan tidak terdeteksi** — lihat jendela *Mask kulit*: area tangan harus
 putih. Kalau tidak, jalankan `calibrate.py`. Turunkan juga `MIN_AREA_RATIO`
