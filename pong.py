@@ -35,15 +35,14 @@ class Ball:
         return pygame.Rect(int(self.x - r), int(self.y - r), 2 * r, 2 * r)
 
     def update(self, dt, paddle):
-        """Gerak dipecah jadi sub-langkah kecil supaya tidak menembus paddle."""
-        jarak = max(abs(self.vx), abs(self.vy)) * dt
-        langkah = max(1, int(math.ceil(jarak / (config.BALL_R / 2))))
-        hasil = None
-        for _ in range(langkah):
-            hasil = self._step(dt / langkah, paddle) or hasil
-        return hasil  # None / "hit" / "miss"
+        """Gerak satu frame + tabrakan sapuan (sweep) dengan paddle.
 
-    def _step(self, dt, paddle):
+        Bola bisa menempuh puluhan piksel per frame (kecepatan maksimum 540
+        px/s dengan dt dijepit 50 ms -> 27 px), sedangkan paddle hanya 16 px
+        tebal. Karena itu tabrakan diperiksa lewat sapuan dari posisi
+        sebelumnya ke posisi baru, bukan hanya posisi akhir frame.
+        """
+        prev_x, prev_y = self.x, self.y
         self.x += self.vx * dt
         self.y += self.vy * dt
 
@@ -51,24 +50,46 @@ class Ball:
         if self.x - config.BALL_R <= 0 or self.x + config.BALL_R >= config.WIDTH:
             self.vx = -self.vx
             self.x = min(max(self.x, config.BALL_R), config.WIDTH - config.BALL_R)
-        if self.y - config.BALL_R <= 0:
+        if self.y - config.BALL_R <= 0 and self.vy < 0:
             self.vy = abs(self.vy)
             self.y = config.BALL_R
 
-        # Pantulan paddle: sudut pantul ditentukan posisi sentuh
-        if self.vy > 0 and self.rect.colliderect(paddle.rect):
-            offset = (self.x - paddle.cx) / (config.PADDLE_W / 2)  # -1..1
-            self.vx = offset * config.BALL_SPEED_X * 2
-            # Cegah bola memantul vertikal terus (|vx| terlalu kecil).
-            if abs(self.vx) < config.MIN_VX:
-                self.vx = config.MIN_VX if offset >= 0 else -config.MIN_VX
-            self.vy = -min(abs(self.vy) * config.BALL_ACCEL, config.BALL_SPEED_MAX)
-            self.y = paddle.rect.top - config.BALL_R
+        if self._sweep_paddle(prev_x, prev_y, paddle):
             return "hit"
 
         if self.y - config.BALL_R > config.HEIGHT:
             return "miss"
         return None
+
+    def _sweep_paddle(self, prev_x, prev_y, paddle):
+        """Tabrakan sapuan dengan muka atas paddle (paddle horizontal di bawah)."""
+        if self.vy <= 0:
+            return False  # bola sedang menjauh dari paddle
+
+        r = config.BALL_R
+        rect = paddle.rect
+        muka = rect.top
+        tepi_lama, tepi_baru = prev_y + r, self.y + r
+        lo, hi = sorted((tepi_lama, tepi_baru))
+        if not lo <= muka <= hi:
+            return False
+
+        # Posisi x bola tepat saat menembus muka atas paddle.
+        t = (muka - tepi_lama) / (tepi_baru - tepi_lama)
+        x_sentuh = prev_x + (self.x - prev_x) * t
+        if not rect.left - r <= x_sentuh <= rect.right + r:
+            return False
+
+        # Sudut pantul ditentukan posisi sentuh pada paddle.
+        offset = (x_sentuh - paddle.cx) / (config.PADDLE_W / 2)  # -1..1
+        offset = min(max(offset, -1.0), 1.0)
+        self.vx = offset * config.BALL_SPEED_X * 2
+        # Cegah bola memantul vertikal terus (|vx| terlalu kecil).
+        if abs(self.vx) < config.MIN_VX:
+            self.vx = config.MIN_VX if offset >= 0 else -config.MIN_VX
+        self.vy = -min(abs(self.vy) * config.BALL_ACCEL, config.BALL_SPEED_MAX)
+        self.y = rect.top - r  # dorong keluar supaya tidak menempel
+        return True
 
 
 class Paddle:
