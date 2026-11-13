@@ -123,8 +123,8 @@ class Ball:
         self.vx = arah * math.cos(sudut) * speed
         self.vy = math.sin(sudut) * speed
         # Jamin |vx| cukup besar supaya bola tidak bolak-balik vertikal saja.
-        if abs(self.vx) < config.MIN_VX_2P:
-            self.vx = config.MIN_VX_2P if arah > 0 else -config.MIN_VX_2P
+        if abs(self.vx) < config.MIN_VX:
+            self.vx = config.MIN_VX if arah > 0 else -config.MIN_VX
         # Dorong bola keluar dari paddle agar tidak menempel dan memantul ulang.
         if paddle.side == "kanan":
             self.x = paddle.rect.left - config.BALL_R

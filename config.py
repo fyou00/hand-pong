@@ -14,7 +14,8 @@ BALL_SPEED_X = 180
 BALL_SPEED_Y = 240
 BALL_SPEED_MAX = 540
 BALL_ACCEL = 1.03
-MIN_VX = 90          # |vx| minimal (~1.5 px/frame @60fps)
+MIN_VX = 180         # |vx| minimal = 3 px/frame @60fps, supaya bola tidak
+                     # bergerak hampir vertikal terus setelah pantulan paddle
 
 KEY_SPEED = 320      # piksel/detik untuk kontrol keyboard
 SMOOTH_TAU = 0.08    # konstanta waktu smoothing paddle (detik)
@@ -59,7 +60,6 @@ BALL_SPEED_X_2P = 260         # kecepatan awal horizontal (piksel/detik)
 BALL_SPEED_Y_2P = 140         # kecepatan awal vertikal (piksel/detik)
 BALL_ACCEL_2P = 1.05          # kecepatan naik sedikit tiap pantulan paddle
 BALL_SPEED_MAX_2P = 620       # batas kecepatan setelah percepatan
-MIN_VX_2P = 180               # |vx| >= 3 piksel/frame @60fps (sumbu utama)
 MAX_BOUNCE_ANGLE = 60         # derajat, sudut pantul maksimum dari offset paddle
 
 # 20%..80% tinggi frame dipetakan ke 0..HEIGHT (paddle bergerak di sumbu y)
