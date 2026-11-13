@@ -166,10 +166,17 @@ class Game:
 
     @staticmethod
     def hand_to_paddle(cx, frame_w):
-        """Rentang 20%..80% lebar frame dipetakan ke 0..WIDTH."""
+        """Rentang 20%..80% lebar frame dipetakan ke rentang gerak paddle.
+
+        Batas tepi: hasilnya dibatasi pada posisi pusat paddle yang masih
+        menyentuh layar, yaitu PADDLE_W/2 .. WIDTH-PADDLE_W/2. Tanpa ini,
+        tangan di 20%-27% lebar frame memetakan ke pusat 0..60 yang semuanya
+        dijepit paddle ke 60, sehingga sebagian rentang tangan tidak berguna.
+        """
         norm = (cx / frame_w - config.HAND_X_MIN) / (config.HAND_X_MAX - config.HAND_X_MIN)
         norm = min(max(norm, 0.0), 1.0)
-        return norm * config.WIDTH
+        half = config.PADDLE_W / 2
+        return half + norm * (config.WIDTH - 2 * half)
 
     # ------------------------------------------------------------------ update
     def update(self, dt):
@@ -195,7 +202,8 @@ class Game:
                     self.target -= config.KEY_SPEED * dt
                 if keys[pygame.K_RIGHT]:
                     self.target += config.KEY_SPEED * dt
-                self.target = min(max(self.target, 0), config.WIDTH)
+                half = config.PADDLE_W / 2
+                self.target = min(max(self.target, half), config.WIDTH - half)
 
         self.paddle.update(dt, self.target)
 

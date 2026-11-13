@@ -23,10 +23,16 @@ def bgr(rgb):
     return (rgb[2], rgb[1], rgb[0])
 
 def hand_to_paddle(cy, frame_h):
-    """Rentang 20%..80% tinggi frame dipetakan ke 0..HEIGHT."""
+    """Rentang 20%..80% tinggi frame dipetakan ke rentang gerak paddle.
+
+    Batas tepi: pusat paddle dibatasi pada PADDLE_LEN/2 .. HEIGHT-PADDLE_LEN/2
+    supaya seluruh panjang paddle tetap di dalam layar dan rentang tangan
+    20%..80% terpakai penuh (tanpa daerah mati di ujung atas/bawah).
+    """
     norm = (cy / frame_h - config.HAND_Y_MIN) / (config.HAND_Y_MAX - config.HAND_Y_MIN)
     norm = min(max(norm, 0.0), 1.0)
-    return norm * config.HEIGHT
+    half = config.PADDLE_LEN / 2
+    return half + norm * (config.HEIGHT - 2 * half)
 
 def label_ke_sisi(hands):
     """Pemetaan label MediaPipe ke sisi paddle.
@@ -237,7 +243,9 @@ class Game:
                     self.target[sisi] -= config.KEY_SPEED * dt
                 if keys[pygame.K_DOWN]:
                     self.target[sisi] += config.KEY_SPEED * dt
-            self.target[sisi] = min(max(self.target[sisi], 0), config.HEIGHT)
+            half = config.PADDLE_LEN / 2
+            self.target[sisi] = min(max(self.target[sisi], half),
+                                    config.HEIGHT - half)
 
         for sisi, paddle in self.paddles.items():
             paddle.update(dt, self.target[sisi])
