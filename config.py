@@ -62,6 +62,25 @@ MAX_HANDS = 2                 # jumlah tangan yang dilacak
 WARNA_KIRI_RGB = (90, 255, 140)
 WARNA_KANAN_RGB = (255, 170, 80)
 
+# ------------------------------------------------------------------- menu & UI
+JUDUL_APLIKASI = "Hand Pong"
+JUDUL_MENU = "HAND PONG"
+FONT_JUDUL = 72
+FONT_TOMBOL = 32
+FONT_PESAN = 18
+
+BUTTON_W, BUTTON_H = 260, 64  # kedua tombol menu selalu sama ukuran
+BUTTON_GAP = 24
+
+WARNA_LATAR_RGB = (0, 0, 0)
+WARNA_JUDUL_RGB = (255, 255, 255)
+WARNA_TEKS_RGB = (235, 235, 240)
+WARNA_TOMBOL_RGB = (32, 32, 38)
+WARNA_TOMBOL_AKTIF_RGB = (64, 70, 96)
+WARNA_BORDER_RGB = (110, 110, 120)
+WARNA_BORDER_AKTIF_RGB = (90, 255, 140)
+WARNA_PESAN_RGB = (255, 120, 120)
+
 # item 5: index kamera. Index 0 di mesin ini adalah kamera IR dan TIDAK PERNAH
 # dipakai. Default 1 = kamera RGB. None = cari otomatis mulai dari index 1.
 CAM_INDEX = 1

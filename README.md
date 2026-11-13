@@ -8,8 +8,10 @@ warna kulit → morfologi → kontur terbesar → pusat kontur.
 
 | File | Isi |
 |---|---|
+| `menu.py` | **Titik masuk aplikasi**: menu utama (tombol Single Player / 2 Player), pemilik kamera, loop menu → game → menu |
+| `ui.py` | Kelas `Button` (rect, label, `draw`, `is_clicked`) — tanpa logika game |
 | `hand_tracker.py` | Tahap PCD: blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah, kontur, pusat tangan (1 atau 2 tangan) |
-| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + loop utama pygame (satu pemain) |
+| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + `run_game(screen, clock, tracker)` (satu pemain) |
 | `pong_2p.py` | Versi dua pemain: dua paddle vertikal, dua tangan, skor sampai 7 |
 | `calibrate.py` | Kalibrasi rentang warna kulit dengan trackbar |
 | `config.py` | Semua konstanta game dan parameter PCD |
@@ -32,24 +34,38 @@ pip install -r requirements.txt
 
 ```bash
 source .venv/bin/activate
-python pong.py
+python menu.py
 ```
 
-Jendela yang muncul:
+Menu utama menampilkan judul dan dua tombol berukuran sama: **Single Player**
+dan **2 Player**.
+
+- Pilih dengan panah atas/bawah atau arahkan mouse; sorotan ditandai warna
+  berbeda + border lebih tebal.
+- `Enter` atau klik kiri untuk masuk ke game.
+- `Esc` di menu untuk keluar aplikasi.
+- `Esc` di dalam game untuk kembali ke menu (bukan keluar aplikasi). Skor, bola,
+  dan nyawa direset, jadi game berikutnya mulai dari awal.
+- Kamera dibuka sekali saat game pertama dimulai dan dipakai ulang, sehingga
+  tidak ada dua kamera aktif saat berpindah menu → game → menu. Kalau kamera
+  gagal dibuka, pesannya tampil di menu dan aplikasi tidak crash.
+
+Game juga bisa dijalankan langsung tanpa menu (untuk pengujian):
+`python pong.py` atau `python pong_2p.py`.
+
+Jendela yang muncul saat bermain:
 
 - **Pong Hand Tracking** — game (640×480)
 - **Debug - Kamera** — feed kamera 320×240 + kotak kandidat tangan (biru),
   kotak wajah yang diabaikan (kuning), titik pusat (hijau)
 - **Debug - Mask kulit** — hasil segmentasi 320×240
 
-Kontrol: gerakkan tangan (posisi X → paddle), panah kiri/kanan sebagai
-cadangan keyboard, `R` untuk main lagi, `Esc` untuk keluar.
+Kontrol di game satu pemain: gerakkan tangan (posisi X → paddle), panah
+kiri/kanan sebagai cadangan keyboard, `R` untuk main lagi, `Esc` ke menu.
 
 ## Mode dua pemain
 
-```bash
-python pong_2p.py
-```
+Pilih tombol **2 Player** di menu, atau jalankan langsung `python pong_2p.py`.
 
 - Paddle **kiri** dikontrol tangan di separuh kiri frame, paddle **kanan** di
   separuh kanan. Paddle bergerak vertikal: posisi Y tangan (20%..80% tinggi
@@ -59,8 +75,8 @@ python pong_2p.py
   paddle di zona itu diam di posisi terakhir.
 - Skor: bola lolos di kiri → pemain kanan dapat poin, dan sebaliknya. Pemain
   pertama yang mencapai 7 poin menang; tekan `R` untuk main lagi.
-- Cadangan keyboard (bisa dipakai tanpa kamera): `W`/`S` untuk paddle kiri,
-  panah atas/bawah untuk paddle kanan, `Esc` keluar.
+- Cadangan keyboard: `W`/`S` untuk paddle kiri, panah atas/bawah untuk paddle
+  kanan, `Esc` kembali ke menu.
 - Jendela debug sama seperti mode satu pemain, dengan garis tengah pemisah zona
   dan titik centroid berwarna berbeda untuk tiap pemain (hijau = kiri,
   oranye = kanan).

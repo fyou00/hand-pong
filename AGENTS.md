@@ -16,8 +16,10 @@ gerakan tangan lewat webcam. Tugas akhir mata kuliah Pengolahan Citra Digital.
 
 | File | Isi |
 |---|---|
+| `menu.py` | **Titik masuk aplikasi** (`python menu.py`): judul + dua tombol, pemilik `HandTracker`, loop menu → game → menu |
+| `ui.py` | Kelas `Button`: rect, label, `draw(screen, highlighted)`, `is_clicked(pos)`; tanpa logika game |
 | `hand_tracker.py` | Tahap PCD: resize 320×240, blur, konversi HSV/YCrCb, threshold, morfologi, buang wajah (Haar), kontur, pusat tangan (`find_hand_center` satu tangan, `find_hand_centers` maks. 2 tangan) |
-| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + loop utama pygame (satu pemain) |
+| `pong.py` | Kelas `Ball`, `Paddle`, `Game` + `run_game(screen, clock, tracker)` (satu pemain) |
 | `pong_2p.py` | Versi dua pemain: dua paddle vertikal (kiri/kanan), zona tangan, fisika sweep, skor sampai `WIN_SCORE` |
 | `calibrate.py` | Kalibrasi rentang warna kulit dengan trackbar |
 | `config.py` | Semua konstanta game dan parameter PCD |
@@ -46,17 +48,31 @@ gerakan tangan lewat webcam. Tugas akhir mata kuliah Pengolahan Citra Digital.
   `"fingertip"`, `cv2.convexityDefects`, atau MediaPipe: game hanya memakai
   koordinat X, dan pusat telapak lebih stabil daripada ujung jari yang
   bergoyang saat jari menekuk.
-- Perubahan harus bisa dijalankan: `python pong.py` tanpa traceback.
+- **Titik masuk aplikasi adalah `menu.py`.** Game tidak boleh memanggil
+  `pygame.init()` atau `pygame.display.set_mode()`; keduanya hanya ada di
+  `main()` masing-masing file untuk pengujian langsung. Game menerima
+  `screen`, `clock`, dan `tracker` lewat `run_game(...)`.
+- **Kamera dibuat sekali di `menu.py`** (`get_tracker()`), dipakai ulang oleh
+  kedua game, dan dilepas `close_camera()` saat aplikasi keluar. Jangan membuat
+  `HandTracker()` di dalam game — kamera akan terbuka dua kali.
+- **`Esc` di dalam game = kembali ke menu**, bukan keluar aplikasi. Jendela
+  debug OpenCV ditutup di akhir sesi (`_tutup_debug`), kamera tetap hidup.
+- Perubahan harus bisa dijalankan: `python menu.py` tanpa traceback.
 
 ## Cara verifikasi
 
 ```bash
 source .venv/bin/activate
-python -m py_compile config.py hand_tracker.py pong.py pong_2p.py calibrate.py
-python pong.py            # jendela game + 2 jendela debug harus muncul
-python pong_2p.py         # dua paddle: kiri & kanan, skor sampai 7
+python -m py_compile config.py ui.py menu.py hand_tracker.py pong.py pong_2p.py calibrate.py
+python menu.py            # menu 640x480: judul + 2 tombol; Esc keluar
+python pong.py            # langsung mode satu pemain (tanpa menu)
+python pong_2p.py         # langsung dua paddle: kiri & kanan, skor sampai 7
 python calibrate.py       # trackbar; 's' cetak HSV_LOWER/HSV_UPPER, 'q' keluar
 ```
+
+Alur menu yang harus terbukti: pilih game (Enter/klik) → game jalan dengan
+jendela debug → `Esc` → kembali ke menu dengan skor/bola/nyawa ter-reset →
+pilih game lagi tanpa pesan kamera kedua (kamera hanya dibuka sekali).
 
 Bukti yang dipakai saat memeriksa perubahan (bukan sekadar "tidak error"):
 

@@ -1,7 +1,10 @@
-"""Game Pong dengan paddle yang digerakkan deteksi tangan (PCD klasik).
+"""Game Pong satu pemain dengan paddle yang digerakkan deteksi tangan (PCD klasik).
 
-Struktur: Ball (fisika bola), Paddle (posisi paddle + smoothing), Game (loop utama).
+Struktur: Ball (fisika bola), Paddle (posisi paddle + smoothing), Game (loop).
 Tahap PCD ada di hand_tracker.py, sedangkan loop + render ada di sini.
+
+Dipakai menu.py lewat run_game(screen, clock, tracker). Untuk pengujian tanpa
+menu, `python pong.py` tetap bisa dijalankan sendiri.
 """
 
 import math
@@ -86,39 +89,51 @@ class Paddle:
 
 
 class Game:
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((config.WIDTH, config.HEIGHT))
-        pygame.display.set_caption("Pong Hand Tracking")
-        self.clock = pygame.time.Clock()
+    """Satu sesi game satu pemain. Layar, clock, dan kamera datang dari menu."""
+
+    def __init__(self, screen, clock, tracker):
+        self.screen = screen
+        self.clock = clock
+        self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
 
-        self.tracker = HandTracker()
-
-        # Jendela debug PCD: kecil, di pojok kiri atas, tidak menutupi game.
-        for name, x in (("Debug - Kamera", 0), ("Debug - Mask kulit", 340)):
-            cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-            cv2.resizeWindow(name, *config.DEBUG_SIZE)
-            cv2.moveWindow(name, x, 0)
-
+        # State baru tiap sesi: keluar ke menu lalu masuk lagi = mulai dari awal.
         self.ball = Ball()
         self.paddle = Paddle()
         self.score = 0
         self.lives = config.LIVES
         self.game_over = False
         self.running = True
+        self.keluar_app = False  # True bila jendela ditutup (bukan Esc)
         # Item 11: target paddle disimpan, jadi saat tangan hilang paddle diam
         # di posisi terakhir (bukan melompat ke tengah / ke keyboard).
         self.target = config.WIDTH / 2
+
+    # ------------------------------------------------------- jendela debug PCD
+    def _buka_debug(self):
+        """Jendela debug kecil di pojok kiri atas, tidak menutupi game."""
+        for name, x in (("Debug - Kamera", 0), ("Debug - Mask kulit", 340)):
+            cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(name, *config.DEBUG_SIZE)
+            cv2.moveWindow(name, x, 0)
+
+    def _tutup_debug(self):
+        """Tutup jendela debug saja; kamera tetap dipakai menu."""
+        for name in ("Debug - Kamera", "Debug - Mask kulit"):
+            try:
+                cv2.destroyWindow(name)
+            except cv2.error:
+                pass
 
     # ------------------------------------------------------------------ input
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+                self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    self.running = False
+                    self.running = False  # kembali ke menu
                 elif event.key == pygame.K_r and self.game_over:
                     self.restart()
 
@@ -206,20 +221,43 @@ class Game:
 
     # --------------------------------------------------------------------- loop
     def run(self):
-        while self.running:
-            dt = self.clock.tick(config.FPS) / 1000.0
-            dt = min(dt, 0.05)  # batasi kalau frame sempat macet
-            self.handle_events()
-            frame, mask, center, faces = self.update(dt)
-            if frame is not None:
-                self.draw(frame, mask, center, faces)
-        self.tracker.release()
-        cv2.destroyAllWindows()
-        pygame.quit()
+        """Loop sesi ini; kembali saat Esc (ke menu) atau jendela ditutup."""
+        self._buka_debug()
+        try:
+            while self.running:
+                dt = self.clock.tick(config.FPS) / 1000.0
+                dt = min(dt, 0.05)  # batasi kalau frame sempat macet
+                self.handle_events()
+                frame, mask, center, faces = self.update(dt)
+                if frame is not None:
+                    self.draw(frame, mask, center, faces)
+        finally:
+            self._tutup_debug()
+        return self.keluar_app
+
+
+def run_game(screen, clock, tracker):
+    """Jalankan satu sesi game satu pemain.
+
+    Kembalikan True bila aplikasi harus ditutup (jendela ditutup), False bila
+    pemain menekan Esc dan harus kembali ke menu.
+    """
+    pygame.display.set_caption("Pong Hand Tracking")
+    return Game(screen, clock, tracker).run()
 
 
 def main():
-    Game().run()
+    """Jalankan game langsung tanpa menu (untuk pengujian)."""
+    pygame.init()
+    screen = pygame.display.set_mode((config.WIDTH, config.HEIGHT))
+    clock = pygame.time.Clock()
+    tracker = HandTracker()
+    try:
+        run_game(screen, clock, tracker)
+    finally:
+        tracker.release()
+        cv2.destroyAllWindows()
+        pygame.quit()
 
 
 if __name__ == "__main__":
