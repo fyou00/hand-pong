@@ -18,6 +18,8 @@ MIN_VX = 90          # |vx| minimal (~1.5 px/frame @60fps)
 
 KEY_SPEED = 320      # piksel/detik untuk kontrol keyboard
 SMOOTH_TAU = 0.08    # konstanta waktu smoothing paddle (detik)
+DT_MAX = 0.05        # batas dt satu frame; frame lebih lambat dari ini dijepit
+                     # agar paddle/bola tidak melompat saat frame sempat macet
 HAND_LOST_DELAY = 1.0  # detik tanpa tangan sebelum keyboard mengambil alih
 
 # ------------------------------------------------------------------- tahap PCD

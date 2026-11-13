@@ -220,7 +220,7 @@ class Game:
         try:
             while self.running:
                 dt = self.clock.tick(config.FPS) / 1000.0
-                dt = min(dt, 0.05)  # batasi kalau frame sempat macet
+                dt = min(dt, config.DT_MAX)  # jepit kalau frame sempat macet
                 self.handle_events()
                 frame, debug, hands = self.update(dt)
                 if frame is not None:
