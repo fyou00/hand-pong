@@ -17,6 +17,7 @@ import config
 from hand_tracker import HandTracker
 from ui import Arena, PlayState
 from sound import sound
+from diagnostics import Diagnostics
 
 
 class Ball:
@@ -119,6 +120,7 @@ class Game:
         sound._load()
         self.arena = Arena()
         self.play = PlayState()
+        self.diagnostics = Diagnostics("single")
         self.clock = clock
         self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
@@ -158,6 +160,7 @@ class Game:
                 self.running = False
                 self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
+                self.diagnostics.event(event.key)
                 if event.key == pygame.K_m:
                     sound.toggle()
                 finished = self.game_over
@@ -171,6 +174,7 @@ class Game:
     def restart(self):
         self.arena.trail.clear()
         self.play = PlayState()
+        self.diagnostics = Diagnostics("single")
         self.score = 0
         self.lives = config.LIVES
         self.game_over = False
@@ -198,6 +202,7 @@ class Game:
             self.running = False
             return None, None, {}
 
+        self.diagnostics.sample(hands, self.tracker.processing_ms)
         self.play.hands = hands
 
         # Posisi diambil dari label tangan; kiri diutamakan.
@@ -251,10 +256,11 @@ class Game:
                            "GAME OVER" if self.game_over else None)
 
         self.play.draw(self.screen, self.game_over)
+        self.diagnostics.draw(self.screen)
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---
-        cv2.imshow(config.DEBUG_WINDOW, debug)
+        cv2.imshow(config.DEBUG_WINDOW, self.diagnostics.image(self.tracker, debug))
         cv2.waitKey(1)
 
     # --------------------------------------------------------------------- loop
@@ -266,6 +272,8 @@ class Game:
                 dt = self.clock.tick(config.FPS) / 1000.0
                 dt = min(dt, config.DT_MAX)  # jepit kalau frame sempat macet
                 self.handle_events()
+                if not self.running:
+                    break
                 frame, debug, hands = self.update(dt)
                 if frame is not None:
                     self.draw(debug, hands)

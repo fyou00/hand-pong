@@ -19,6 +19,7 @@ import config
 from hand_tracker import HandTracker
 from ui import Arena, PlayState
 from sound import sound
+from diagnostics import Diagnostics
 
 def bgr(rgb):
     """Warna config disimpan dalam RGB (pygame); OpenCV butuh BGR."""
@@ -170,6 +171,7 @@ class Game:
         sound._load()
         self.arena = Arena()
         self.play = PlayState()
+        self.diagnostics = Diagnostics("two")
         self.clock = clock
         self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
@@ -210,6 +212,7 @@ class Game:
                 self.running = False
                 self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
+                self.diagnostics.event(event.key)
                 if event.key == pygame.K_m:
                     sound.toggle()
                 finished = self.winner is not None
@@ -223,6 +226,7 @@ class Game:
     def restart(self):
         self.arena.trail.clear()
         self.play = PlayState()
+        self.diagnostics = Diagnostics("two")
         self.score = {"kiri": 0, "kanan": 0}
         self.winner = None
         self.ball.reset()
@@ -270,6 +274,7 @@ class Game:
             self.running = False
             return None, None, None
 
+        self.diagnostics.sample(hands, self.tracker.processing_ms)
         self.play.hands = hands
         self.tangan = label_ke_sisi(hands)
         self.update_targets(dt, self.tangan, frame.shape[0])
@@ -305,11 +310,12 @@ class Game:
                            f"{self.score['kanan']:02d}", "2 PLAYER", message)
 
         self.play.draw(self.screen, self.winner is not None)
+        self.diagnostics.draw(self.screen)
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---
         self.draw_debug(debug, tangan)
-        cv2.imshow(config.DEBUG_WINDOW, debug)
+        cv2.imshow(config.DEBUG_WINDOW, self.diagnostics.image(self.tracker, debug))
         cv2.waitKey(1)
 
     def draw_debug(self, debug, tangan):
@@ -338,6 +344,8 @@ class Game:
                 dt = self.clock.tick(config.FPS) / 1000.0
                 dt = min(dt, config.DT_MAX)  # jepit kalau frame sempat macet
                 self.handle_events()
+                if not self.running:
+                    break
                 frame, debug, tangan = self.update(dt)
                 if frame is not None:
                     self.draw(debug, tangan)

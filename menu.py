@@ -84,6 +84,15 @@ def _baris_pesan(font, teks, lebar_maks):
     return hasil
 
 
+def difficulty_rect():
+    return pygame.Rect(130, 342, 380, 36)
+
+
+def cycle_difficulty(step=1):
+    i = config.DIFFICULTIES.index(config.DIFFICULTY)
+    config.set_difficulty(config.DIFFICULTIES[(i + step) % 3])
+
+
 def _gambar(screen, buttons, index):
     screen.fill(config.WARNA_LATAR_RGB)
     judul = get_font(config.FONT_JUDUL).render(config.JUDUL_MENU, True,
@@ -93,6 +102,12 @@ def _gambar(screen, buttons, index):
     for i, tombol in enumerate(buttons):
         tombol.draw(screen, i == index)
 
+    rect = difficulty_rect()
+    pygame.draw.rect(screen, config.WARNA_TOMBOL_RGB, rect)
+    text = get_font(17).render(f"<  {config.DIFFICULTY}  >", True, config.WARNA_KANAN_RGB)
+    screen.blit(text, text.get_rect(center=rect.center))
+    hint = get_font(12).render("Kiri/kanan atau klik: tingkat kesulitan", True, config.WARNA_REDUP_RGB)
+    screen.blit(hint, hint.get_rect(center=(config.WIDTH // 2, 392)))
     if _kamera["pesan"]:
         font = get_font(config.FONT_PESAN)
         baris = _baris_pesan(font, _kamera["pesan"], config.WIDTH - 40)
@@ -125,6 +140,8 @@ def run_menu(screen, clock):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return None
+                if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                    cycle_difficulty(-1 if event.key == pygame.K_LEFT else 1)
                 if event.key == pygame.K_UP:
                     index = (index - 1) % len(buttons)
                 elif event.key == pygame.K_DOWN:
@@ -134,6 +151,8 @@ def run_menu(screen, clock):
                     if mode is not None:
                         return mode
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if difficulty_rect().collidepoint(event.pos):
+                    cycle_difficulty()
                 for i, tombol in enumerate(buttons):
                     if tombol.is_clicked(event.pos):
                         index = i

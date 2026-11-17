@@ -36,6 +36,8 @@ def skin_mask(bgr, lower, upper, kernel_size=5):
 
 class HandTracker:
     def __init__(self, cam_index=config.CAM_INDEX):
+        self.processing_ms = 0.0
+        self.stages = ()
         self.cap = self._open_camera(cam_index)
 
         # Tahap 1: CLAHE untuk meratakan kontras cahaya sebelum dideteksi.
@@ -151,7 +153,9 @@ class HandTracker:
         l, a, b = cv2.split(lab)
         l = self.clahe.apply(l)
         hasil = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
-        return cv2.GaussianBlur(hasil, (config.BLUR_KSIZE, config.BLUR_KSIZE), 0)
+        prep = cv2.GaussianBlur(hasil, (config.BLUR_KSIZE, config.BLUR_KSIZE), 0)
+        self.stages = (frame, hasil, prep)
+        return prep
 
     def anchor(self, landmark, shape):
         """Tahap 4: anchor tangan = pusat telapak (landmark 9) dalam piksel."""
@@ -173,6 +177,8 @@ class HandTracker:
             self.terputus = True
             return None, None, {}
         self.terputus = False
+
+        started = time.perf_counter()
 
         # Semua deteksi dikerjakan di 320x240 agar ringan.
         frame = cv2.resize(frame, (config.PROC_W, config.PROC_H),
@@ -203,4 +209,5 @@ class HandTracker:
         cv2.putText(debug, f"TANGAN: {jumlah}", (6, debug.shape[0] - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45,
                     (0, 255, 0) if jumlah else (0, 0, 255), 1)
+        self.processing_ms = (time.perf_counter() - started) * 1000
         return frame, debug, posisi

@@ -142,3 +142,37 @@ Pantulan, poin, kehilangan nyawa, game over, dan kemenangan memakai suara
 sintetis tanpa aset tambahan. Tekan **M** saat bermain untuk mute/unmute;
 pilihan bertahan saat berganti mode. Status audio terlihat di bawah arena.
 Jika perangkat audio tidak tersedia, game tetap berjalan tanpa suara.
+
+## Demo PCD, statistik, dan kesulitan
+
+- Di menu, tekan **kiri/kanan** atau klik pilihan kesulitan untuk mengganti
+  **Mudah / Normal / Sulit**. Normal adalah default. Mudah memakai kecepatan
+  bola 80% dan paddle 125%; Sulit memakai kecepatan 125% dan paddle 80%.
+  Preset berlaku untuk kedua mode, termasuk batas kecepatan bola; batas
+  minimal horizontal tetap dipertahankan. Pilihan bertahan saat kembali ke menu.
+- Saat bermain, tekan **D** pada jendela game untuk berganti antara debug biasa
+  dan demo empat panel: RGB yang dicerminkan, CLAHE pada LAB, Gaussian blur,
+  dan landmark/anchor. Garis pada panel terakhir menunjukkan rentang pemetaan
+  20–80%: sumbu X untuk satu pemain, Y untuk dua pemain. Garis ini bukan
+  pembagian kepemilikan tangan; paddle tetap mengikuti label Left/Right.
+  Tidak ada mask segmentasi dalam pipeline game; mask legacy hanya di calibrate.py.
+- Statistik di bagian atas arena menampilkan **rata-rata FPS sesi**, **rata-rata
+  waktu PCD per frame (ms)**, dan **persentase frame dengan setidaknya satu tangan**.
+  Waktu PCD dihitung setelah pembacaan kamera: resize, cermin, CLAHE, blur,
+  MediaPipe, dan anotasi debug. Angka ini bukan latensi kamera ke layar.
+- **E** mengekspor CSV ke folder `reports/` dengan nama waktu unik. CSV berisi
+  snapshot kumulatif sekitar sekali per detik dan snapshot terakhir saat ekspor:
+  mode, kesulitan, durasi, jumlah frame, rata-rata FPS/waktu PCD, persentase
+  deteksi total, Left, dan Right. Ekspor tidak menghapus statistik sesi.
+  Kegagalan menulis file ditampilkan tanpa menghentikan permainan.
+- Statistik mencakup frame selama layar kesiapan, countdown, pause, dan akhir
+  game karena kamera tetap diproses. **R** setelah selesai atau masuk sesi baru
+  mereset statistik. Demo menambah beban render sehingga dapat memengaruhi FPS.
+  Persentase deteksi adalah ketersediaan tracking, **bukan akurasi**; akurasi
+  memerlukan data berlabel sebagai pembanding.
+
+Uji otomatis tanpa kamera:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```

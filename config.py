@@ -97,3 +97,19 @@ CAM_INDEX_CANDIDATES = (1, 2, 3)   # index yang dicoba saat CAM_INDEX = None
 WARNA_ARENA_RGB = (36, 31, 47)
 WARNA_REDUP_RGB = (174, 166, 186)
 WARNA_NET_RGB = (69, 60, 81)
+
+
+DIFFICULTY = "Normal"
+DIFFICULTIES = ("Mudah", "Normal", "Sulit")
+_BASE_DIFFICULTY = {name: globals()[name] for name in (
+    "PADDLE_W", "PADDLE_LEN", "BALL_SPEED_X", "BALL_SPEED_Y",
+    "BALL_SPEED_MAX", "BALL_SPEED_X_2P", "BALL_SPEED_Y_2P", "BALL_SPEED_MAX_2P")}
+
+
+def set_difficulty(name):
+    """Terapkan preset sebelum sesi; selalu hitung dari nilai Normal."""
+    global DIFFICULTY
+    speed, paddle = {"Mudah": (.8, 1.25), "Normal": (1., 1.), "Sulit": (1.25, .8)}[name]
+    DIFFICULTY = name
+    for key, value in _BASE_DIFFICULTY.items():
+        globals()[key] = round(value * (paddle if key.startswith("PADDLE") else speed))
