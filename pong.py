@@ -16,6 +16,7 @@ import pygame
 import config
 from hand_tracker import HandTracker
 from ui import Arena, PlayState
+from sound import sound
 
 
 class Ball:
@@ -115,6 +116,7 @@ class Game:
 
     def __init__(self, screen, clock, tracker):
         self.screen = screen
+        sound._load()
         self.arena = Arena()
         self.play = PlayState()
         self.clock = clock
@@ -156,6 +158,8 @@ class Game:
                 self.running = False
                 self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_m:
+                    sound.toggle()
                 finished = self.game_over
                 if not finished:
                     self.play.event(event.key)
@@ -218,17 +222,22 @@ class Game:
         self.paddle.update(dt, self.target)
 
         if not self.game_over and self.play.advance(dt):
+            previous_velocity = (self.ball.vx, self.ball.vy)
             hasil = self.ball.update(dt, self.paddle)
             if hasil == "hit":
+                sound.play("hit")
                 self.score += 1
             elif hasil == "miss":
                 self.lives -= 1
+                sound.play("over" if self.lives <= 0 else "miss")
                 if self.lives <= 0:
                     self.game_over = True
                 else:
                     self.ball.reset()
                     self.play.serve()
 
+            elif previous_velocity != (self.ball.vx, self.ball.vy):
+                sound.play("wall")
 
         return frame, debug, hands
 
@@ -261,6 +270,7 @@ class Game:
                 if frame is not None:
                     self.draw(debug, hands)
         finally:
+            sound.stop()
             self._tutup_debug()
         return self.keluar_app
 

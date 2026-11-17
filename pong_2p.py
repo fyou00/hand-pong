@@ -18,6 +18,7 @@ import pygame
 import config
 from hand_tracker import HandTracker
 from ui import Arena, PlayState
+from sound import sound
 
 def bgr(rgb):
     """Warna config disimpan dalam RGB (pygame); OpenCV butuh BGR."""
@@ -166,6 +167,7 @@ class Game:
 
     def __init__(self, screen, clock, tracker):
         self.screen = screen
+        sound._load()
         self.arena = Arena()
         self.play = PlayState()
         self.clock = clock
@@ -208,6 +210,8 @@ class Game:
                 self.running = False
                 self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_m:
+                    sound.toggle()
                 finished = self.winner is not None
                 if not finished:
                     self.play.event(event.key)
@@ -271,9 +275,11 @@ class Game:
         self.update_targets(dt, self.tangan, frame.shape[0])
 
         if self.winner is None and self.play.advance(dt):
+            previous_velocity = (self.ball.vx, self.ball.vy)
             hasil = self.ball.update(dt, list(self.paddles.values()))
             if hasil in ("kiri", "kanan"):
                 self.score[hasil] += 1
+                sound.play("win" if self.score[hasil] >= config.WIN_SCORE else "point")
                 if self.score[hasil] >= config.WIN_SCORE:
                     self.winner = hasil
                 else:
@@ -281,6 +287,10 @@ class Game:
                     kalah = "kanan" if hasil == "kiri" else "kiri"
                     self.ball.reset(-1 if kalah == "kiri" else 1)
                     self.play.serve()
+            elif hasil == "hit":
+                sound.play("hit")
+            elif previous_velocity != (self.ball.vx, self.ball.vy):
+                sound.play("wall")
         return frame, debug, self.tangan
 
     # -------------------------------------------------------------------- draw
@@ -332,6 +342,7 @@ class Game:
                 if frame is not None:
                     self.draw(debug, tangan)
         finally:
+            sound.stop()
             self._tutup_debug()
         return self.keluar_app
 

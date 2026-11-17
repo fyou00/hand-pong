@@ -3,6 +3,7 @@
 import pygame
 
 import config
+from sound import sound
 
 _font = {}  # cache font per ukuran
 
@@ -124,7 +125,7 @@ class PlayState:
             color = config.WARNA_KANAN_RGB if detected else config.WARNA_REDUP_RGB
             text = get_font(11).render(f"{name}: {'OK' if detected else 'HILANG'}", True, color)
             screen.blit(text, (18 + i * 135, height - 22))
-        hint = get_font(11).render("P / SPASI: PAUSE", True, config.WARNA_REDUP_RGB)
+        hint = get_font(11).render("P: PAUSE  " + sound.label, True, config.WARNA_REDUP_RGB)
         screen.blit(hint, (width - hint.get_width() - 20, height - 22))
         if finished:
             return

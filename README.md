@@ -135,3 +135,10 @@ tidak menutupi game. Kalau masih ketutupan, geser jendela debug.
 
 **Paddle tidak bergerak walau tangan terlihat** — cek teks `TANGAN: n` di
 jendela *Debug - Kamera*. Bila `0`, deteksi gagal (lihat poin di atas).
+
+## Efek suara
+
+Pantulan, poin, kehilangan nyawa, game over, dan kemenangan memakai suara
+sintetis tanpa aset tambahan. Tekan **M** saat bermain untuk mute/unmute;
+pilihan bertahan saat berganti mode. Status audio terlihat di bawah arena.
+Jika perangkat audio tidak tersedia, game tetap berjalan tanpa suara.
