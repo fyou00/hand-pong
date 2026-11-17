@@ -100,6 +100,12 @@ class PlayState:
         self.remaining = 0.0
         self.hands = {}
 
+    def gesture_ready(self, gestures, two=False):
+        values = [gestures.get(label, {}) for label in ("Left", "Right")]
+        ready = [v.get("kind") == "open" and v.get("duration", 0) >= config.READY_HOLD for v in values]
+        if not self.ready and (all(ready) if two else any(ready)):
+            self.event(pygame.K_RETURN)
+
     def serve(self):
         self.remaining = 3.0
 
@@ -136,6 +142,6 @@ class PlayState:
             pygame.draw.rect(screen, config.WARNA_LATAR_RGB, box)
             text = get_font(28).render(message, True, config.WARNA_KANAN_RGB)
             screen.blit(text, text.get_rect(center=(box.centerx, box.centery - 12)))
-            subtitle = "Posisikan tangan / ENTER mulai" if not self.ready else "P / SPASI lanjut" if self.paused else "Bersiap!"
+            subtitle = "Buka telapak 0.7s / ENTER mulai" if not self.ready else "P / SPASI lanjut" if self.paused else "Bersiap!"
             text = get_font(13).render(subtitle, True, config.WARNA_TEKS_RGB)
             screen.blit(text, text.get_rect(center=(box.centerx, box.centery + 20)))

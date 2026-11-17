@@ -274,6 +274,7 @@ class Game:
 
         self.diagnostics.sample(hands, self.tracker.processing_ms)
         self.play.hands = hands
+        self.play.gesture_ready(getattr(self.tracker, "gestures", {}), two=True)
         self.tangan = label_ke_sisi(hands)
         self.update_targets(dt, self.tangan, frame.shape[0])
 

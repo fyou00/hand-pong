@@ -203,6 +203,7 @@ class Game:
 
         self.diagnostics.sample(hands, self.tracker.processing_ms)
         self.play.hands = hands
+        self.play.gesture_ready(getattr(self.tracker, "gestures", {}), two=False)
 
         # Posisi diambil dari label tangan; kiri diutamakan.
         anchor = hands.get("Left") or hands.get("Right")
