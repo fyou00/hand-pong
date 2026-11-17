@@ -88,3 +88,53 @@ class Arena:
             label(message, 18, config.WARNA_KANAN_RGB, (box.centerx, box.centery - 14), True)
             label("R / MAIN LAGI    ESC / MENU", 12, config.WARNA_TEKS_RGB,
                   (box.centerx, box.centery + 18), True)
+
+
+class PlayState:
+    """Kesiapan, hitung mundur, dan pause tanpa menghentikan kamera."""
+
+    def __init__(self):
+        self.ready = False
+        self.paused = False
+        self.remaining = 0.0
+        self.hands = {}
+
+    def serve(self):
+        self.remaining = 3.0
+
+    def event(self, key):
+        if key in (pygame.K_RETURN, pygame.K_KP_ENTER) and not self.ready:
+            self.ready = True
+            self.serve()
+        elif key in (pygame.K_p, pygame.K_SPACE) and self.ready:
+            self.paused = not self.paused
+
+    def advance(self, dt):
+        if not self.ready or self.paused:
+            return False
+        if self.remaining > 0:
+            self.remaining = max(0.0, self.remaining - dt)
+            return False
+        return True
+
+    def draw(self, screen, finished=False):
+        width, height = screen.get_size()
+        for i, name in enumerate(("Left", "Right")):
+            detected = self.hands.get(name) is not None
+            color = config.WARNA_KANAN_RGB if detected else config.WARNA_REDUP_RGB
+            text = get_font(11).render(f"{name}: {'OK' if detected else 'HILANG'}", True, color)
+            screen.blit(text, (18 + i * 135, height - 22))
+        hint = get_font(11).render("P / SPASI: PAUSE", True, config.WARNA_REDUP_RGB)
+        screen.blit(hint, (width - hint.get_width() - 20, height - 22))
+        if finished:
+            return
+        message = ("SIAP BERMAIN" if not self.ready else "PAUSE" if self.paused
+                   else str(int(self.remaining) + (self.remaining % 1 > 0)) if self.remaining > 0 else None)
+        if message:
+            box = pygame.Rect(28, height // 2 - 42, width - 64, 84)
+            pygame.draw.rect(screen, config.WARNA_LATAR_RGB, box)
+            text = get_font(28).render(message, True, config.WARNA_KANAN_RGB)
+            screen.blit(text, text.get_rect(center=(box.centerx, box.centery - 12)))
+            subtitle = "Posisikan tangan / ENTER mulai" if not self.ready else "P / SPASI lanjut" if self.paused else "Bersiap!"
+            text = get_font(13).render(subtitle, True, config.WARNA_TEKS_RGB)
+            screen.blit(text, text.get_rect(center=(box.centerx, box.centery + 20)))

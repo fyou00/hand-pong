@@ -17,7 +17,7 @@ import pygame
 
 import config
 from hand_tracker import HandTracker
-from ui import Arena
+from ui import Arena, PlayState
 
 def bgr(rgb):
     """Warna config disimpan dalam RGB (pygame); OpenCV butuh BGR."""
@@ -167,6 +167,7 @@ class Game:
     def __init__(self, screen, clock, tracker):
         self.screen = screen
         self.arena = Arena()
+        self.play = PlayState()
         self.clock = clock
         self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
@@ -207,6 +208,9 @@ class Game:
                 self.running = False
                 self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
+                finished = self.winner is not None
+                if not finished:
+                    self.play.event(event.key)
                 if event.key == pygame.K_ESCAPE:
                     self.running = False  # kembali ke menu
                 elif event.key == pygame.K_r and self.winner is not None:
@@ -214,6 +218,7 @@ class Game:
 
     def restart(self):
         self.arena.trail.clear()
+        self.play = PlayState()
         self.score = {"kiri": 0, "kanan": 0}
         self.winner = None
         self.ball.reset()
@@ -261,10 +266,11 @@ class Game:
             self.running = False
             return None, None, None
 
+        self.play.hands = hands
         self.tangan = label_ke_sisi(hands)
         self.update_targets(dt, self.tangan, frame.shape[0])
 
-        if self.winner is None:
+        if self.winner is None and self.play.advance(dt):
             hasil = self.ball.update(dt, list(self.paddles.values()))
             if hasil in ("kiri", "kanan"):
                 self.score[hasil] += 1
@@ -274,6 +280,7 @@ class Game:
                     # Bola direset ke tengah, arah acak ke pemain yang kehilangan poin.
                     kalah = "kanan" if hasil == "kiri" else "kiri"
                     self.ball.reset(-1 if kalah == "kiri" else 1)
+                    self.play.serve()
         return frame, debug, self.tangan
 
     # -------------------------------------------------------------------- draw
@@ -287,6 +294,7 @@ class Game:
         self.arena.present(self.screen, f"{self.score['kiri']:02d}",
                            f"{self.score['kanan']:02d}", "2 PLAYER", message)
 
+        self.play.draw(self.screen, self.winner is not None)
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---

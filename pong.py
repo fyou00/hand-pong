@@ -15,7 +15,7 @@ import pygame
 
 import config
 from hand_tracker import HandTracker
-from ui import Arena
+from ui import Arena, PlayState
 
 
 class Ball:
@@ -116,6 +116,7 @@ class Game:
     def __init__(self, screen, clock, tracker):
         self.screen = screen
         self.arena = Arena()
+        self.play = PlayState()
         self.clock = clock
         self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
@@ -155,6 +156,9 @@ class Game:
                 self.running = False
                 self.keluar_app = True
             elif event.type == pygame.KEYDOWN:
+                finished = self.game_over
+                if not finished:
+                    self.play.event(event.key)
                 if event.key == pygame.K_ESCAPE:
                     self.running = False  # kembali ke menu
                 elif event.key == pygame.K_r and self.game_over:
@@ -162,6 +166,7 @@ class Game:
 
     def restart(self):
         self.arena.trail.clear()
+        self.play = PlayState()
         self.score = 0
         self.lives = config.LIVES
         self.game_over = False
@@ -189,6 +194,7 @@ class Game:
             self.running = False
             return None, None, {}
 
+        self.play.hands = hands
 
         # Posisi diambil dari label tangan; kiri diutamakan.
         anchor = hands.get("Left") or hands.get("Right")
@@ -211,7 +217,7 @@ class Game:
 
         self.paddle.update(dt, self.target)
 
-        if not self.game_over:
+        if not self.game_over and self.play.advance(dt):
             hasil = self.ball.update(dt, self.paddle)
             if hasil == "hit":
                 self.score += 1
@@ -221,6 +227,7 @@ class Game:
                     self.game_over = True
                 else:
                     self.ball.reset()
+                    self.play.serve()
 
 
         return frame, debug, hands
@@ -234,6 +241,7 @@ class Game:
                            "SINGLE PLAYER / SKOR - NYAWA",
                            "GAME OVER" if self.game_over else None)
 
+        self.play.draw(self.screen, self.game_over)
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---
