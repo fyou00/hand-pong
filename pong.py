@@ -15,6 +15,7 @@ import pygame
 
 import config
 from hand_tracker import HandTracker
+from ui import Arena
 
 
 class Ball:
@@ -114,6 +115,7 @@ class Game:
 
     def __init__(self, screen, clock, tracker):
         self.screen = screen
+        self.arena = Arena()
         self.clock = clock
         self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
@@ -159,6 +161,7 @@ class Game:
                     self.restart()
 
     def restart(self):
+        self.arena.trail.clear()
         self.score = 0
         self.lives = config.LIVES
         self.game_over = False
@@ -185,6 +188,7 @@ class Game:
             print("Kamera tidak terbaca (frame kosong).")
             self.running = False
             return None, None, {}
+
 
         # Posisi diambil dari label tangan; kiri diutamakan.
         anchor = hands.get("Left") or hands.get("Right")
@@ -218,28 +222,22 @@ class Game:
                 else:
                     self.ball.reset()
 
+
         return frame, debug, hands
 
     # -------------------------------------------------------------------- draw
     def draw(self, debug, hands):
-        self.screen.fill((0, 0, 0))
-        pygame.draw.rect(self.screen, (255, 255, 255), self.paddle.rect)
-        pygame.draw.circle(self.screen, (255, 255, 255),
-                           (int(self.ball.x), int(self.ball.y)), config.BALL_R)
-        self.screen.blit(self.font.render(f"Skor: {self.score}", True,
-                                          (255, 255, 255)), (10, 10))
-        self.screen.blit(self.font.render(f"Nyawa: {self.lives}", True,
-                                          (255, 255, 255)),
-                         (config.WIDTH - 150, 10))
-        if self.game_over:
-            msg = self.font.render("GAME OVER - tekan R untuk main lagi", True,
-                                   (255, 80, 80))
-            self.screen.blit(msg, msg.get_rect(center=(config.WIDTH / 2,
-                                                       config.HEIGHT / 2)))
+        surface = self.arena.begin()
+        pygame.draw.rect(surface, config.WARNA_KIRI_RGB, self.paddle.rect)
+        self.arena.ball(self.ball)
+        self.arena.present(self.screen, f"{self.score:02d}", f"{self.lives:02d}",
+                           "SINGLE PLAYER / SKOR - NYAWA",
+                           "GAME OVER" if self.game_over else None)
+
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---
-        cv2.imshow("Debug - Kamera", debug)
+        cv2.imshow(config.DEBUG_WINDOW, debug)
         cv2.waitKey(1)
 
     # --------------------------------------------------------------------- loop

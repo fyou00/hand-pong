@@ -66,8 +66,8 @@ MAX_BOUNCE_ANGLE = 60         # derajat, sudut pantul maksimum dari offset paddl
 HAND_Y_MIN, HAND_Y_MAX = 0.2, 0.8
 
 # Warna pemain (RGB untuk pygame; OpenCV memakai urutan terbalik)
-WARNA_KIRI_RGB = (90, 255, 140)
-WARNA_KANAN_RGB = (255, 170, 80)
+WARNA_KIRI_RGB = (255, 123, 87)
+WARNA_KANAN_RGB = (229, 232, 113)
 
 # ------------------------------------------------------------------- menu & UI
 JUDUL_APLIKASI = "Hand Pong"
@@ -79,16 +79,21 @@ FONT_PESAN = 18
 BUTTON_W, BUTTON_H = 260, 64  # kedua tombol menu selalu sama ukuran
 BUTTON_GAP = 24
 
-WARNA_LATAR_RGB = (0, 0, 0)
+WARNA_LATAR_RGB = (22, 19, 32)
 WARNA_JUDUL_RGB = (255, 255, 255)
 WARNA_TEKS_RGB = (235, 235, 240)
-WARNA_TOMBOL_RGB = (32, 32, 38)
-WARNA_TOMBOL_AKTIF_RGB = (64, 70, 96)
-WARNA_BORDER_RGB = (110, 110, 120)
-WARNA_BORDER_AKTIF_RGB = (90, 255, 140)
+WARNA_TOMBOL_RGB = (36, 31, 47)
+WARNA_TOMBOL_AKTIF_RGB = (56, 48, 67)
+WARNA_BORDER_RGB = (69, 60, 81)
+WARNA_BORDER_AKTIF_RGB = (229, 232, 113)
 WARNA_PESAN_RGB = (255, 120, 120)
 
 # index kamera. Index 0 di mesin ini adalah kamera IR dan TIDAK PERNAH
 # dipakai. Default 1 = kamera RGB. None = cari otomatis mulai dari index 1.
 CAM_INDEX = 1
 CAM_INDEX_CANDIDATES = (1, 2, 3)   # index yang dicoba saat CAM_INDEX = None
+
+# Palet arena mengikuti referensi image.png.
+WARNA_ARENA_RGB = (36, 31, 47)
+WARNA_REDUP_RGB = (174, 166, 186)
+WARNA_NET_RGB = (69, 60, 81)

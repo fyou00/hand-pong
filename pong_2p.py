@@ -17,6 +17,7 @@ import pygame
 
 import config
 from hand_tracker import HandTracker
+from ui import Arena
 
 def bgr(rgb):
     """Warna config disimpan dalam RGB (pygame); OpenCV butuh BGR."""
@@ -165,6 +166,7 @@ class Game:
 
     def __init__(self, screen, clock, tracker):
         self.screen = screen
+        self.arena = Arena()
         self.clock = clock
         self.tracker = tracker
         self.font = pygame.font.SysFont(None, 36)
@@ -211,6 +213,7 @@ class Game:
                     self.restart()
 
     def restart(self):
+        self.arena.trail.clear()
         self.score = {"kiri": 0, "kanan": 0}
         self.winner = None
         self.ball.reset()
@@ -275,29 +278,15 @@ class Game:
 
     # -------------------------------------------------------------------- draw
     def draw(self, debug, tangan):
-        self.screen.fill((0, 0, 0))
-        pygame.draw.line(self.screen, (60, 60, 60), (config.WIDTH / 2, 0),
-                         (config.WIDTH / 2, config.HEIGHT), 2)
-        pygame.draw.rect(self.screen, config.WARNA_KIRI_RGB, self.paddles["kiri"].rect)
-        pygame.draw.rect(self.screen, config.WARNA_KANAN_RGB, self.paddles["kanan"].rect)
-        pygame.draw.circle(self.screen, (255, 255, 255),
-                           (int(self.ball.x), int(self.ball.y)), config.BALL_R)
-        self.screen.blit(self.font.render(f"Kiri: {self.score['kiri']}", True,
-                                          config.WARNA_KIRI_RGB), (10, 10))
-        skor_kanan = self.font.render(f"Kanan: {self.score['kanan']}", True,
-                                      config.WARNA_KANAN_RGB)
-        self.screen.blit(skor_kanan, (config.WIDTH - 10 - skor_kanan.get_width(), 10))
+        surface = self.arena.begin()
+        for side, color in (("kiri", config.WARNA_KIRI_RGB),
+                            ("kanan", config.WARNA_KANAN_RGB)):
+            pygame.draw.rect(surface, color, self.paddles[side].rect)
+        self.arena.ball(self.ball)
+        message = f"PEMAIN {self.winner.upper()} MENANG" if self.winner else None
+        self.arena.present(self.screen, f"{self.score['kiri']:02d}",
+                           f"{self.score['kanan']:02d}", "2 PLAYER", message)
 
-        if self.winner is not None:
-            warna = (config.WARNA_KIRI_RGB if self.winner == "kiri"
-                     else config.WARNA_KANAN_RGB)
-            menang = self.font_besar.render(f"PEMAIN {self.winner.upper()} MENANG",
-                                            True, warna)
-            lagi = self.font.render("tekan R untuk main lagi", True, (255, 255, 255))
-            self.screen.blit(menang, menang.get_rect(center=(config.WIDTH / 2,
-                                                             config.HEIGHT / 2 - 20)))
-            self.screen.blit(lagi, lagi.get_rect(center=(config.WIDTH / 2,
-                                                         config.HEIGHT / 2 + 20)))
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---
