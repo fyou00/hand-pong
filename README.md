@@ -181,3 +181,10 @@ Uji otomatis tanpa kamera:
   semua >=160° berarti terbuka, semua <=110° berarti mengepal; lainnya netral.
   MediaPipe hanya menyediakan landmark dan label tangan. Ambang awal ini perlu
   diverifikasi dengan webcam, terutama saat tangan miring atau tertutup.
+
+## Landing page
+
+Landing page Palm Pong berdasarkan desain FigCraft tersedia di `landing/`.
+Jalankan `python3 -m http.server 8000 --directory landing`, lalu buka
+http://localhost:8000. Halaman ini mengenalkan game dan menyediakan panduan
+instalasi desktop; belum menjalankan permainan atau webcam di browser.
