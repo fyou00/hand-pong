@@ -23,7 +23,7 @@ Informatika. Pendekatan: hybrid, yaitu MediaPipe Hands untuk landmark tangan
 ## Struktur file
 
 - `menu.py`: entry point. Menu Single Player / 2 Player, loop utama menu -> game -> menu.
-- `ui.py`: kelas `Button` (draw, is_clicked). Tanpa logika game.
+- `ui.py`: komponen `Button`, `Arena`, dan `PlayState` untuk menu, render, kesiapan, countdown, dan pause. Fisika tetap di modul game.
 - `hand_tracker.py`: kelas `HandTracker`. Tahap PCD (resize, CLAHE pada LAB, blur)
   dan pemanggilan MediaPipe Hands. `read()` mengembalikan `(frame, debug, hands)`,
   dengan `hands` berupa dict `{"Left": (x, y), "Right": (x, y)}` dalam koordinat frame.
@@ -66,5 +66,5 @@ Informatika. Pendekatan: hybrid, yaitu MediaPipe Hands untuk landmark tangan
 
 - Daftar file yang dibuat atau diubah.
 - Ringkasan perubahan per item.
-- Langkah uji manual: cek mask/landmark, cek paddle kiri dan kanan, cek menu,
+- Langkah uji manual: cek pra-pemrosesan/landmark, cek paddle kiri dan kanan, cek menu,
   cek Esc kembali ke menu, cek kamera tidak error saat berpindah mode.

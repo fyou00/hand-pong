@@ -8,30 +8,11 @@ import time
 
 import cv2
 import mediapipe as mp
-import numpy as np
 
 import config
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
-
-
-def skin_mask(bgr, lower, upper, kernel_size=5):
-    """Segmentasi warna kulit. Dipakai calibrate.py untuk eksplorasi rentang HSV."""
-    blur = cv2.GaussianBlur(bgr, (5, 5), 0)
-    if config.COLOR_SPACE == "ycrcb":
-        conv = cv2.cvtColor(blur, cv2.COLOR_BGR2YCrCb)
-    else:
-        conv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
-
-    lo = np.array(lower, dtype=np.uint8)
-    hi = np.array(upper, dtype=np.uint8)
-    mask = cv2.inRange(conv, lo, hi)
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-    return mask
 
 
 class HandTracker:

@@ -28,11 +28,6 @@ PROC_W, PROC_H = 320, 240     # deteksi diproses di resolusi kecil
 DEBUG_SIZE = (320, 240)       # ukuran jendela debug OpenCV
 DEBUG_WINDOW = "Debug - Kamera"   # menampilkan pra-pemrosesan + landmark + anchor
 
-COLOR_SPACE = "hsv"           # "hsv" atau "ycrcb" (hanya untuk calibrate.py)
-HSV_LOWER = (0, 40, 60)
-HSV_UPPER = (25, 255, 255)
-YCRCB_LOWER = (0, 133, 77)
-YCRCB_UPPER = (255, 173, 127)
 
 # ------------------------------------------------------- tahap PCD + MediaPipe
 CLAHE_CLIP = 2.0              # tahap 1: batas peningkatan kontras CLAHE

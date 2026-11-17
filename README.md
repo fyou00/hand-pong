@@ -10,11 +10,10 @@ tangan (Left/Right), sedangkan tahap pengolahan citra digital dikerjakan sendiri
 | File | Isi |
 |---|---|
 | `menu.py` | **Titik masuk aplikasi**: menu utama (tombol Single Player / 2 Player), pemilik kamera, loop menu → game → menu |
-| `ui.py` | Kelas `Button` (rect, label, `draw`, `is_clicked`) — tanpa logika game |
+| `ui.py` | `Button`, `Arena`, dan `PlayState`: menu, presentasi arena, kesiapan/countdown/pause |
 | `hand_tracker.py` | Tahap PCD: resize 320×240 → cermin → CLAHE pada LAB → blur → MediaPipe Hands → anchor pusat telapak. `read()` mengembalikan `(frame, debug, hands)` dengan `hands = {"Left": (x, y), "Right": (x, y)}` |
 | `pong.py` | Game satu pemain: `Ball`, `Paddle`, `Game`, `run_game(screen, clock, tracker)` |
 | `pong_2p.py` | Game dua pemain: dua paddle vertikal, label Left/Right, skor sampai 7 |
-| `calibrate.py` | Opsional/legacy: eksplorasi rentang warna kulit dengan trackbar. Tidak dipakai game |
 | `config.py` | Semua konstanta game dan parameter PCD |
 | `requirements.txt` | `opencv-contrib-python<5`, `numpy`, `pygame`, `mediapipe==0.10.14` |
 
@@ -48,7 +47,7 @@ Menu utama menampilkan judul dan dua tombol berukuran sama: **Single Player**
 dan **2 Player**.
 
 - Pilih dengan panah atas/bawah (memutar) atau gerakkan mouse ke tombol;
-  sorotan ditandai warna lebih terang + border hijau lebih tebal.
+  sorotan ditandai warna lebih terang + border kuning lebih tebal.
 - `Enter` atau klik kiri untuk masuk ke game.
 - `Esc` di menu untuk keluar aplikasi.
 - `Esc` di dalam game untuk kembali ke menu (bukan keluar aplikasi). Skor, bola,
@@ -83,7 +82,7 @@ Pilih tombol **2 Player** di menu, atau jalankan langsung `python pong_2p.py`.
 - Cadangan keyboard: `W`/`S` untuk paddle kiri, panah atas/bawah untuk paddle
   kanan, `Esc` kembali ke menu.
 - Jendela debug sama seperti mode satu pemain, dengan titik anchor berwarna
-  berbeda untuk tiap pemain (hijau = kiri, oranye = kanan).
+  berbeda untuk tiap pemain (coral = kiri, kuning = kanan).
 
 ## Tangan hilang dan kontrol keyboard
 
@@ -94,18 +93,6 @@ Paddle tidak pernah melompat ke keyboard. Aturannya sama di kedua mode:
 3. Tangan hilang lebih dari `HAND_LOST_DELAY` (1 detik) → keyboard aktif dan
    bisa menggeser paddle. Begitu tangan terlihat lagi, keyboard langsung
    diabaikan dan paddle kembali mengikuti tangan.
-
-## Kalibrasi warna kulit (opsional)
-
-```bash
-python calibrate.py
-```
-
-Game tidak lagi memakai segmentasi warna kulit (deteksi tangan memakai
-MediaPipe), jadi langkah ini **tidak diperlukan** untuk bermain. Skrip ini
-tetap disimpan untuk eksplorasi/laporan: geser trackbar sampai mask putih
-mengikuti tangan, tekan `s` untuk mencetak `HSV_LOWER` / `HSV_UPPER`, `q` untuk
-keluar. Nilai yang dicetak tidak memengaruhi jalannya game.
 
 ## Troubleshooting
 
@@ -155,7 +142,7 @@ Jika perangkat audio tidak tersedia, game tetap berjalan tanpa suara.
   dan landmark/anchor. Garis pada panel terakhir menunjukkan rentang pemetaan
   20–80%: sumbu X untuk satu pemain, Y untuk dua pemain. Garis ini bukan
   pembagian kepemilikan tangan; paddle tetap mengikuti label Left/Right.
-  Tidak ada mask segmentasi dalam pipeline game; mask legacy hanya di calibrate.py.
+  Tidak ada mask segmentasi dalam pipeline game; segmentasi warna kulit telah dihapus.
 - Statistik di bagian atas arena menampilkan **rata-rata FPS sesi**, **rata-rata
   waktu PCD per frame (ms)**, dan **persentase frame dengan setidaknya satu tangan**.
   Waktu PCD dihitung setelah pembacaan kamera: resize, cermin, CLAHE, blur,
