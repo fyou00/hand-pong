@@ -20,6 +20,7 @@ from hand_tracker import HandTracker
 from ui import Arena, PlayState
 from sound import sound
 from diagnostics import Diagnostics
+from abilities import Ability
 
 def bgr(rgb):
     """Warna config disimpan dalam RGB (pygame); OpenCV butuh BGR."""
@@ -54,6 +55,8 @@ class Ball:
 
     def reset(self, arah=None):
         """Kembali ke tengah. arah -1 = ke kiri, +1 = ke kanan, None = acak."""
+        self.power = False
+        self.hit_side = None
         self.x = config.WIDTH / 2
         self.y = config.HEIGHT / 2
         if arah is None:
@@ -118,6 +121,13 @@ class Ball:
         if not rect.top - r <= y_sentuh <= rect.bottom + r:
             return False
 
+        if self.power:
+            speed = math.hypot(self.vx, self.vy)
+            factor = min(1., config.BALL_SPEED_MAX_2P / speed)
+            self.vx *= factor
+            self.vy *= factor
+        self.power = False
+        self.hit_side = "Left" if paddle.side == "kiri" else "Right"
         self._pantul(paddle, y_sentuh)
         return True
 
@@ -174,6 +184,8 @@ class Game:
         self.diagnostics = Diagnostics("two")
         self.clock = clock
         self.tracker = tracker
+        if hasattr(tracker, "reset_gestures"):
+            tracker.reset_gestures()
 
         # State baru tiap sesi: keluar ke menu lalu masuk lagi = mulai dari awal.
         self.paddles = {"kiri": Paddle("kiri"), "kanan": Paddle("kanan")}
@@ -183,6 +195,8 @@ class Game:
         self.tangan = {"kiri": None, "kanan": None}
         # Lama tangan tidak terlihat per sisi; keyboard aktif setelah HAND_LOST_DELAY.
         self.hilang_dt = {"kiri": 0.0, "kanan": 0.0}
+        self.abilities = {label: Ability() for label in ("Left", "Right")}
+        self.control_label = None
         self.ball = Ball()
         self.score = {"kiri": 0, "kanan": 0}
         self.winner = None
@@ -222,7 +236,11 @@ class Game:
                     self.restart()
 
     def restart(self):
+        if hasattr(self.tracker, "reset_gestures"):
+            self.tracker.reset_gestures()
         self.arena.trail.clear()
+        self.abilities = {label: Ability() for label in ("Left", "Right")}
+        self.control_label = None
         self.play = PlayState()
         self.diagnostics = Diagnostics("two")
         self.score = {"kiri": 0, "kanan": 0}
@@ -279,9 +297,14 @@ class Game:
         self.update_targets(dt, self.tangan, frame.shape[0])
 
         if self.winner is None and self.play.advance(dt):
+            gestures = getattr(self.tracker, "gestures", {})
+            for label, ability in self.abilities.items():
+                ability.update(dt, gestures.get(label, {}).get("fist", False))
             previous_velocity = (self.ball.vx, self.ball.vy)
             hasil = self.ball.update(dt, list(self.paddles.values()))
             if hasil in ("kiri", "kanan"):
+                for ability in self.abilities.values():
+                    ability.rally_end()
                 self.score[hasil] += 1
                 sound.play("win" if self.score[hasil] >= config.WIN_SCORE else "point")
                 if self.score[hasil] >= config.WIN_SCORE:
@@ -292,6 +315,7 @@ class Game:
                     self.ball.reset(-1 if kalah == "kiri" else 1)
                     self.play.serve()
             elif hasil == "hit":
+                self.abilities[self.ball.hit_side].hit(self.ball, config.BALL_SPEED_MAX_2P)
                 sound.play("hit")
             elif previous_velocity != (self.ball.vx, self.ball.vy):
                 sound.play("wall")
@@ -302,7 +326,8 @@ class Game:
         surface = self.arena.begin()
         for side, color in (("kiri", config.WARNA_KIRI_RGB),
                             ("kanan", config.WARNA_KANAN_RGB)):
-            pygame.draw.rect(surface, color, self.paddles[side].rect)
+            label = "Left" if side == "kiri" else "Right"
+            pygame.draw.rect(surface, config.WARNA_TEKS_RGB if self.abilities[label].active else color, self.paddles[side].rect)
         self.arena.ball(self.ball)
         message = f"PEMAIN {self.winner.upper()} MENANG" if self.winner else None
         self.arena.present(self.screen, f"{self.score['kiri']:02d}",
@@ -310,6 +335,7 @@ class Game:
 
         self.play.draw(self.screen, self.winner is not None)
         self.diagnostics.draw(self.screen)
+        self.play.draw_abilities(self.screen, self.abilities, getattr(self.tracker, "gestures", {}))
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---

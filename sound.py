@@ -22,6 +22,9 @@ class SoundEffects:
             if pygame.mixer.get_init() is None:
                 pygame.mixer.init()
             notes = {
+                "charge": [(440, .08), (660, .12)],
+                "power": [(220, .06), (880, .15)],
+                "combo": [(660, .08), (880, .08), (1100, .12)],
                 "wall": [(330, .045)],
                 "hit": [(660, .065)],
                 "point": [(660, .09), (880, .13)],

@@ -64,7 +64,7 @@ class Arena:
             color = tuple(int(a + (b - a) * t * .6) for a, b in
                           zip(config.WARNA_ARENA_RGB, config.WARNA_KIRI_RGB))
             pygame.draw.rect(self.surface, color, (int(x) - 3, int(y) - 3, 6, 6))
-        pygame.draw.rect(self.surface, config.WARNA_TEKS_RGB, ball.rect)
+        pygame.draw.rect(self.surface, config.WARNA_KANAN_RGB if getattr(ball, "power", False) else config.WARNA_TEKS_RGB, ball.rect)
 
     def present(self, screen, left, right, mode, message=None):
         w, h = screen.get_size()
@@ -145,3 +145,12 @@ class PlayState:
             subtitle = "Buka telapak 0.7s / ENTER mulai" if not self.ready else "P / SPASI lanjut" if self.paused else "Bersiap!"
             text = get_font(13).render(subtitle, True, config.WARNA_TEKS_RGB)
             screen.blit(text, text.get_rect(center=(box.centerx, box.centery + 20)))
+
+
+    def draw_abilities(self, screen, abilities, gestures):
+        for i, (label, ability) in enumerate(abilities.items()):
+            text = f"{label} {gestures.get(label, {}).get('kind', 'unknown')} {ability.label()}"
+            if not self.ready:
+                text += f" READY {min(100, int(gestures.get(label, {}).get('duration', 0) / config.READY_HOLD * 100)) if gestures.get(label, {}).get('kind') == 'open' else 0}%"
+            image = get_font(10).render(text, True, config.WARNA_KANAN_RGB if ability.active else config.WARNA_REDUP_RGB)
+            screen.blit(image, (25, 120 + i * 15))

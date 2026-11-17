@@ -18,6 +18,7 @@ from hand_tracker import HandTracker
 from ui import Arena, PlayState
 from sound import sound
 from diagnostics import Diagnostics
+from abilities import Ability
 
 
 class Ball:
@@ -27,6 +28,8 @@ class Ball:
         self.reset()
 
     def reset(self):
+        self.power = False
+        self.hit_side = None
         self.x = config.WIDTH / 2
         self.y = config.HEIGHT / 2
         self.vx = random.choice([-1, 1]) * config.BALL_SPEED_X
@@ -83,6 +86,9 @@ class Ball:
         if not rect.left - r <= x_sentuh <= rect.right + r:
             return False
 
+        if self.power:
+            self.vy = min(abs(self.vy), config.BALL_SPEED_MAX)
+        self.power = False
         # Sudut pantul ditentukan posisi sentuh pada paddle.
         offset = (x_sentuh - paddle.cx) / (config.PADDLE_W / 2)  # -1..1
         offset = min(max(offset, -1.0), 1.0)
@@ -123,8 +129,12 @@ class Game:
         self.diagnostics = Diagnostics("single")
         self.clock = clock
         self.tracker = tracker
+        if hasattr(tracker, "reset_gestures"):
+            tracker.reset_gestures()
 
         # State baru tiap sesi: keluar ke menu lalu masuk lagi = mulai dari awal.
+        self.abilities = {label: Ability() for label in ("Left", "Right")}
+        self.control_label = None
         self.ball = Ball()
         self.paddle = Paddle()
         self.score = 0
@@ -171,7 +181,11 @@ class Game:
                     self.restart()
 
     def restart(self):
+        if hasattr(self.tracker, "reset_gestures"):
+            self.tracker.reset_gestures()
         self.arena.trail.clear()
+        self.abilities = {label: Ability() for label in ("Left", "Right")}
+        self.control_label = None
         self.play = PlayState()
         self.diagnostics = Diagnostics("single")
         self.score = 0
@@ -207,6 +221,9 @@ class Game:
 
         # Posisi diambil dari label tangan; kiri diutamakan.
         anchor = hands.get("Left") or hands.get("Right")
+        label = "Left" if hands.get("Left") is not None else "Right" if hands.get("Right") is not None else None
+        changed_label = label != self.control_label
+        self.control_label = label
         if anchor is not None:
             self.target = self.hand_to_paddle(anchor[0], frame.shape[1])
             self.hilang_dt = 0.0
@@ -227,12 +244,18 @@ class Game:
         self.paddle.update(dt, self.target)
 
         if not self.game_over and self.play.advance(dt):
+            gestures = getattr(self.tracker, "gestures", {})
+            for label, ability in self.abilities.items():
+                ability.update(dt, label == self.control_label and not changed_label and gestures.get(label, {}).get("fist", False))
             previous_velocity = (self.ball.vx, self.ball.vy)
             hasil = self.ball.update(dt, self.paddle)
             if hasil == "hit":
                 sound.play("hit")
+                self.abilities[self.control_label or "Left"].hit(self.ball, math.hypot(2*config.BALL_SPEED_X, config.BALL_SPEED_MAX))
                 self.score += 1
             elif hasil == "miss":
+                for ability in self.abilities.values():
+                    ability.rally_end()
                 self.lives -= 1
                 sound.play("over" if self.lives <= 0 else "miss")
                 if self.lives <= 0:
@@ -249,7 +272,7 @@ class Game:
     # -------------------------------------------------------------------- draw
     def draw(self, debug, hands):
         surface = self.arena.begin()
-        pygame.draw.rect(surface, config.WARNA_KIRI_RGB, self.paddle.rect)
+        pygame.draw.rect(surface, config.WARNA_KANAN_RGB if self.abilities[self.control_label or "Left"].active else config.WARNA_KIRI_RGB, self.paddle.rect)
         self.arena.ball(self.ball)
         self.arena.present(self.screen, f"{self.score:02d}", f"{self.lives:02d}",
                            "SINGLE PLAYER / SKOR - NYAWA",
@@ -257,6 +280,7 @@ class Game:
 
         self.play.draw(self.screen, self.game_over)
         self.diagnostics.draw(self.screen)
+        self.play.draw_abilities(self.screen, self.abilities, getattr(self.tracker, "gestures", {}))
         pygame.display.flip()
 
         # --- jendela debug PCD: hasil pra-pemrosesan + landmark + anchor ---

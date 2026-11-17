@@ -123,6 +123,11 @@ class HandTracker:
             "  tidak bisa dipakai untuk deteksi tangan."
         )
 
+    def reset_gestures(self):
+        self.gestures = {}
+        self.gesture_states = {label: GestureState() for label in ("Left", "Right")}
+        self.gesture_time = time.perf_counter()
+
     def release(self):
         self.cap.release()
         self.hands.close()

@@ -163,3 +163,21 @@ Uji otomatis tanpa kamera:
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
 ```
+
+## Gestur dan kemampuan
+
+- Buka telapak selama 0,7 detik pada layar kesiapan untuk memulai countdown.
+  Solo menerima salah satu tangan; dua pemain membutuhkan Left dan Right
+  terbuka bersamaan. Enter tetap dapat dipakai.
+- Kepalkan tangan selama 0,25 detik saat bermain untuk mempersiapkan Power Shot.
+  Kesempatan memukul berlaku 2 detik; cooldown 8 detik dimulai saat aktivasi.
+  Pantulan berikutnya mendapat boost 1,3×, sampai menyentuh paddle berikutnya.
+- Setiap tiga pantulan milik pemain menghapus sisa cooldown. Hadiah tidak
+  ditabung. Combo dan serangan aktif dihapus saat rally berakhir; cooldown
+  tetap berjalan saat permainan aktif, membeku selama pause/countdown.
+- Menahan kepalan tidak mengaktifkan ulang. Buka atau netralkan jari terlebih
+  dahulu. Kepalan selama pause/countdown tidak disimpan untuk aktivasi berikutnya.
+- Gestur dihitung sendiri dari sudut MCP–PIP–DIP empat jari selain ibu jari:
+  semua >=160° berarti terbuka, semua <=110° berarti mengepal; lainnya netral.
+  MediaPipe hanya menyediakan landmark dan label tangan. Ambang awal ini perlu
+  diverifikasi dengan webcam, terutama saat tangan miring atau tertutup.
