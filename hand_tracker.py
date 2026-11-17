@@ -10,6 +10,7 @@ import cv2
 import mediapipe as mp
 
 import config
+from gestures import classify, GestureState
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
@@ -17,6 +18,9 @@ mp_drawing = mp.solutions.drawing_utils
 
 class HandTracker:
     def __init__(self, cam_index=config.CAM_INDEX):
+        self.gestures = {}
+        self.gesture_states = {label: GestureState() for label in ("Left", "Right")}
+        self.gesture_time = time.perf_counter()
         self.processing_ms = 0.0
         self.stages = ()
         self.cap = self._open_camera(cam_index)
@@ -153,6 +157,12 @@ class HandTracker:
                 Label mengikuti gambar yang sudah dicerminkan, jadi "Left" berarti
                 tangan di sisi kiri layar.
         """
+        now = time.perf_counter()
+        gesture_dt = min(now - getattr(self, "gesture_time", now), .1)
+        self.gesture_time = now
+        if not hasattr(self, "gesture_states"):
+            self.gesture_states = {label: GestureState() for label in ("Left", "Right")}
+        kinds = {}
         ok, frame = self.cap.read()
         if not ok:
             self.terputus = True
@@ -184,8 +194,12 @@ class HandTracker:
                 cv2.putText(debug, label, (titik[0] + 8, titik[1]),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
                 # Satu tangan per label: yang pertama (skor tertinggi) dipakai.
+                if label not in posisi:
+                    kinds[label] = classify(landmark.landmark, frame.shape[1], frame.shape[0])
                 posisi.setdefault(label, titik)
 
+        self.gestures = {label: state.update(kinds.get(label, "unknown"), gesture_dt)
+                         for label, state in self.gesture_states.items()}
         jumlah = len(posisi)
         cv2.putText(debug, f"TANGAN: {jumlah}", (6, debug.shape[0] - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45,

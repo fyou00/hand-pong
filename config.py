@@ -108,3 +108,11 @@ def set_difficulty(name):
     DIFFICULTY = name
     for key, value in _BASE_DIFFICULTY.items():
         globals()[key] = round(value * (paddle if key.startswith("PADDLE") else speed))
+
+OPEN_ANGLE = 160
+FIST_ANGLE = 110
+FIST_HOLD = .25
+READY_HOLD = .7
+POWER_DURATION = 2.
+POWER_COOLDOWN = 8.
+POWER_MULTIPLIER = 1.3
