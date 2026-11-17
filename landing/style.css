@@ -9,7 +9,8 @@
   --coral:#ff7644;
   --lime:#ddf76b;
   --body:Arial,Helvetica,sans-serif;
-  --pixel:Silom,'Lucida Console',Monaco,monospace--support-0:#4a3b56;
+  --pixel:Silom,'Lucida Console',Monaco,monospace;
+  --support-0:#4a3b56;
   --support-1:#57445f;
   --support-2:#68516b;
   --support-3:#796077;
@@ -501,3 +502,49 @@ nav a {
 
 
 h1 { color: var(--coral); }
+
+:root { color-scheme: dark; }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #faf5ed;
+  --panel: #eee5f0;
+  --text: #261a30;
+  --muted: #66566e;
+  --coral: #ae3614;
+  --lime: #426300;
+  --support-0: #b3a1bd;
+  --support-1: #cbbbd0;
+  --support-2: #b9a4c1;
+  --support-3: #a58bae;
+  --support-4: #926c94;
+  --support-5: #7c4b78;
+  --support-6: #9d88a6;
+  --support-7: #261a30db;
+  --support-8: #d9cbdc;
+}
+header nav { margin-left: auto; }
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--support-6);
+  background: var(--panel);
+  color: var(--lime);
+  padding: 10px;
+}
+.theme-toggle[hidden] { display: none; }
+.theme-toggle:hover { border-color: var(--lime); }
+.theme-toggle:active { transform: translateY(1px); }
+.theme-toggle svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.theme-toggle .moon-icon { display: none; }
+[data-theme="light"] .theme-toggle .sun-icon { display: none; }
+[data-theme="light"] .theme-toggle .moon-icon { display: block; }
+@media(max-width:600px) {
+  header { gap: 12px; flex-wrap: wrap; height: auto; padding-top: 20px; padding-bottom: 12px; }
+  header .brand { order: 0; }
+  header nav { order: 2; width: 100%; margin: 0; justify-content: space-between; }
+  header .theme-toggle { order: 1; margin-left: auto; }
+}

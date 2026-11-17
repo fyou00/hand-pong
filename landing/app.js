@@ -15,3 +15,19 @@ copy.addEventListener('click', async () => {
     copy.removeAttribute('aria-busy');
   }
 });
+
+const themeToggle = document.querySelector('.theme-toggle');
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+  themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Aktifkan mode terang' : 'Aktifkan mode gelap');
+  themeToggle.title = themeToggle.getAttribute('aria-label');
+  document.querySelector('meta[name="theme-color"]').content = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+}
+applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+themeToggle.hidden = false;
+themeToggle.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { localStorage.setItem('palm-pong-theme', next); } catch {}
+});
