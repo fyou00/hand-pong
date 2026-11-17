@@ -1,4 +1,4 @@
-"""Game Pong satu pemain dengan paddle yang digerakkan deteksi tangan (PCD klasik).
+"""Game Pong satu pemain dengan paddle yang digerakkan deteksi tangan (hybrid PCD + MediaPipe).
 
 Struktur: Ball (fisika bola), Paddle (posisi paddle + smoothing), Game (loop).
 Tahap PCD ada di hand_tracker.py, sedangkan loop + render ada di sini.
@@ -123,7 +123,6 @@ class Game:
         self.diagnostics = Diagnostics("single")
         self.clock = clock
         self.tracker = tracker
-        self.font = pygame.font.SysFont(None, 36)
 
         # State baru tiap sesi: keluar ke menu lalu masuk lagi = mulai dari awal.
         self.ball = Ball()

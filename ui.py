@@ -1,4 +1,4 @@
-"""Komponen UI sederhana: tombol menu. Tanpa logika game."""
+"""Komponen menu, presentasi arena, dan state kesiapan/countdown/pause."""
 
 import pygame
 

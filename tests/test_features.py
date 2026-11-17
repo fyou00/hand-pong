@@ -61,7 +61,7 @@ class FeaturesTest(unittest.TestCase):
         tracker.cap = SimpleNamespace(read=lambda: (True, np.full((480, 640, 3), 90, np.uint8)))
         tracker.clahe = cv2.createCLAHE(2., (8, 8))
         tracker.hands = SimpleNamespace(process=lambda rgb: SimpleNamespace(multi_hand_landmarks=None))
-        for module, mode in ((pong, 'single'), (pong_2p, 'two')):
+        for module in (pong, pong_2p):
             game = module.Game(self.screen, pygame.time.Clock(), tracker)
             frame, debug, hands = game.update(.016)
             self.assertEqual(frame.shape, (240, 320, 3))

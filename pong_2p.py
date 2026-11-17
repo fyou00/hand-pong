@@ -174,8 +174,6 @@ class Game:
         self.diagnostics = Diagnostics("two")
         self.clock = clock
         self.tracker = tracker
-        self.font = pygame.font.SysFont(None, 36)
-        self.font_besar = pygame.font.SysFont(None, 48)
 
         # State baru tiap sesi: keluar ke menu lalu masuk lagi = mulai dari awal.
         self.paddles = {"kiri": Paddle("kiri"), "kanan": Paddle("kanan")}
